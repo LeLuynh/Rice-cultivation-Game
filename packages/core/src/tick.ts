@@ -1,7 +1,8 @@
-import { CONFIG, type Stage } from './config'
-import type { GameEvent } from './actions'
+import { CONFIG, type Stage, type Task } from './config'
+import type { ErrorCode, GameEvent } from './actions'
 import { nextRandom } from './rng'
 import type { GameState, PlotState } from './state'
+import { availableTasks, performTaskOnPlot } from './tasks'
 
 const NEXT_STAGE: Partial<Record<Stage, Stage>> = {
   seedling: 'seedlingReady',
@@ -69,20 +70,77 @@ function stepStageGrowth(plot: PlotState, events: GameEvent[]): void {
   events.push({ type: 'stageChanged', plotId: plot.id, stage: next })
 }
 
-function stepPlot(state: GameState, plot: PlotState, events: GameEvent[]): void {
+/** Tăng tuổi các việc đang khả dụng, xóa tuổi việc đã hết. Trả về việc chờ lâu nhất. */
+function ageJobs(plot: PlotState): Task | null {
+  const ages: Partial<Record<Task, number>> = {}
+  let oldest: Task | null = null
+  for (const task of availableTasks(plot)) {
+    ages[task] = (plot.jobAgeSec[task] ?? 0) + 1
+    if (oldest === null || ages[task]! > ages[oldest]!) oldest = task
+  }
+  plot.jobAgeSec = ages
+  return oldest
+}
+
+/** Người làm của Địa chủ làm thay việc để quá hạn (spec 4.5). */
+function landlordWorkerStep(state: GameState, index: number, task: Task, events: GameEvent[]): void {
+  if (state.plots[index].jobAgeSec[task]! < CONFIG.landlordJobTimeoutSec) return
+  state.plots[index] = performTaskOnPlot(state.plots[index], task).plot
+  events.push({ type: 'landlordWorkerDid', plotId: state.plots[index].id, task })
+}
+
+function npcShortfall(state: GameState, task: Task): ErrorCode | null {
+  if (state.xu < CONFIG.wages[task]) return 'NOT_ENOUGH_XU'
+  if (task === 'sow' && state.inventory.seeds < 1) return 'NO_SEED'
+  if (task === 'fertilize' && state.inventory.fertilizer < 1) return 'NO_FERTILIZER'
+  return null
+}
+
+/** NPC người chơi thuê làm việc trên ô đã giao (spec 4.7). */
+function npcStep(state: GameState, index: number, task: Task, events: GameEvent[]): void {
+  const plot = state.plots[index]
+  if (plot.jobAgeSec[task]! < CONFIG.playerNpcDelaySec) return
+  const reason = npcShortfall(state, task)
+  if (reason) {
+    if (plot.npcBlocked !== reason) {
+      plot.npcBlocked = reason
+      events.push({ type: 'npcBlocked', plotId: plot.id, reason })
+    }
+    return
+  }
+  const wage = CONFIG.wages[task]
+  state.xu -= wage
+  if (task === 'sow') state.inventory.seeds--
+  if (task === 'fertilize') state.inventory.fertilizer--
+  const result = performTaskOnPlot(plot, task)
+  if (result.harvestedKg !== undefined) state.inventory.riceKg += result.harvestedKg
+  state.plots[index] = { ...result.plot, npcBlocked: null }
+  events.push({ type: 'npcDid', plotId: plot.id, task, wage })
+}
+
+function stepWorkers(state: GameState, index: number, events: GameEvent[]): void {
+  const plot = state.plots[index]
+  const task = ageJobs(plot)
+  if (task === null) return
+  if (plot.owner === 'landlord') landlordWorkerStep(state, index, task, events)
+  else if (plot.owner === 'player' && plot.npcEnabled) npcStep(state, index, task, events)
+}
+
+function stepPlot(state: GameState, index: number, events: GameEvent[]): void {
+  const plot = state.plots[index]
   plot.stageElapsedSec++
   stepTenSecond(plot)
   stepPestCheck(state, plot, events)
   stepStageGrowth(plot, events)
+  stepWorkers(state, index, events)
 }
 
 /** Một giây trôi qua; biến đổi trực tiếp `state` (đã là bản sao). */
 function stepOneSecond(state: GameState, events: GameEvent[]): void {
   state.timeSec++
-  for (const plot of state.plots) {
-    if (plot.owner === 'forSale') continue
-    stepPlot(state, plot, events)
-  }
+  state.plots.forEach((plot, index) => {
+    if (plot.owner !== 'forSale') stepPlot(state, index, events)
+  })
 }
 
 /** Cho thời gian trôi `dtSeconds` giây (làm tròn xuống). Thuần: không sửa state đầu vào. */
@@ -90,7 +148,7 @@ export function tick(state: GameState, dtSeconds: number): { state: GameState; e
   const events: GameEvent[] = []
   const seconds = Math.floor(dtSeconds)
   const next = structuredClone(state)
-  if (!(seconds > 0)) return { state: next, events }
+  if (!Number.isFinite(seconds) || seconds <= 0) return { state: next, events }
   for (let i = 0; i < seconds; i++) stepOneSecond(next, events)
   return { state: next, events }
 }

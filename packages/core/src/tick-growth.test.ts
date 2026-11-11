@@ -55,7 +55,8 @@ describe('tick', () => {
   })
 
   it('chín quá 180 giây mất 2 kg mỗi 10 giây', () => {
-    const r = tick(setup({ stage: 'ripe', drained: true, fertilized: true }), 200)
+    // ô người chơi không bật NPC: không ai gặt hộ
+    const r = tick(setup({ stage: 'ripe', drained: true, fertilized: true, owner: 'player' }), 200)
     expect(p1(r.state).lostKg).toBe(4)
   })
 
