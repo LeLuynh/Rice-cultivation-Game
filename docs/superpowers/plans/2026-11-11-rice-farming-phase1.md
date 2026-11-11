@@ -100,6 +100,7 @@ packages/client/
     wages: Record<Task, number>; // plow15 sow10 transplant20 water5 drain5 fertilize10 weed10 pestControl10 harvest20 thresh15
     tasks: Record<Task, { tool: ToolId; baseSec: number }>; // spec 4.4
     autosaveIntervalSec: 10;
+    day: { lengthSec: 360; startHour: 6; endHour: 22 };
   }
   function nextRandom(rngState: number): [value: number /*[0,1)*/, nextState: number]  // mulberry32
   ```
@@ -117,6 +118,7 @@ packages/client/
     expect(CONFIG.wages).toEqual({ plow:15, sow:10, transplant:20, water:5, drain:5, fertilize:10, weed:10, pestControl:10, harvest:20, thresh:15 })
     expect(CONFIG.tasks.plow).toEqual({ tool:'hoe', baseSec:6 })
     expect(CONFIG.tasks.thresh).toEqual({ tool:'hands', baseSec:5 })
+    expect(CONFIG.day).toEqual({ lengthSec:360, startHour:6, endHour:22 })
   })
   // rng.test.ts
   it('cùng seed cùng dãy', () => { /* 5 lần nextRandom từ seed 42 hai lần → mảng bằng nhau */ })
@@ -154,12 +156,21 @@ packages/client/
     toolLevels: Record<ToolId, ToolLevel>
     plots: PlotState[]          // plots[i].id === i + 1
     rngState: number; timeSec: number; tutorialSeen: boolean
+    day: number; dayElapsedSec: number          // Ngày 1, 0 giây lúc tạo game
+    dayStats: DayStats; daySummary: DaySummary | null
   }
+  interface DayStats {
+    startXu: number; landlordTasksDone: number; wagesEarned: number
+    riceHarvestedKg: number; riceSalesXu: number; suppliesSpentXu: number
+    landAndUpgradeSpentXu: number; npcWagesPaidXu: number
+  }
+  interface DaySummary extends DayStats { day: number; endXu: number; netXu: number }
   function createNewGame(playerName: string, seed: number): GameState
   function freshPlot(id: number, owner: PlotOwner): PlotState   // dry, water 0, health 100, mọi cờ false
   function availableTasks(plot: PlotState): Task[]
   ```
-- `ErrorCode` được khai báo trong `actions.ts` ở bước này (chỉ kiểu): `'WRONG_STAGE'|'WRONG_TOOL'|'NOT_ENOUGH_XU'|'NO_SEED'|'NO_FERTILIZER'|'NOT_OWNER'|'NOT_FOR_SALE'|'NO_JOB'|'NPC_LOCKED'|'MAX_LEVEL'|'NOT_ENOUGH_RICE'|'INVALID_AMOUNT'`.
+- `ErrorCode` được khai báo trong `actions.ts` ở bước này (chỉ kiểu): `'WRONG_STAGE'|'WRONG_TOOL'|'NOT_ENOUGH_XU'|'NO_SEED'|'NO_FERTILIZER'|'NOT_OWNER'|'NOT_FOR_SALE'|'NO_JOB'|'NPC_LOCKED'|'MAX_LEVEL'|'NOT_ENOUGH_RICE'|'INVALID_AMOUNT'|'DAY_ENDED'`.
+- `createNewGame` đặt `day = 1`, `dayElapsedSec = 0`, `daySummary = null`, `dayStats` toàn 0 với `startXu = 50`.
 
 **Luật `availableTasks`** (spec 4.5): dry→plow; plowed→sow; seedlingReady→transplant; ripe→harvest; bundled→thresh. Cộng thêm theo điều kiện: `water` khi stage thuộc `drainingStages` và `water < threshold`; `fertilize` khi stage ∈ {young, green} và `!fertilized`; `weed` khi `hasWeeds`; `pestControl` khi `hasPests`; `drain` khi stage = flowering và `!drained`. Ô `forSale` trả mảng rỗng.
 
@@ -205,7 +216,7 @@ packages/client/
     | { type: 'buySeeds'; qty: number } | { type: 'buyFertilizer'; qty: number }
     | { type: 'buyLand'; plotId: number } | { type: 'sellRice'; kg: number }
     | { type: 'upgradeTool'; tool: ToolId } | { type: 'setNpc'; plotId: number; enabled: boolean }
-    | { type: 'markTutorialSeen' }
+    | { type: 'markTutorialSeen' } | { type: 'startNextDay' }
   type GameEvent =
     | { type: 'wagePaid'; plotId: number; task: Task; amount: number }
     | { type: 'riceHarvested'; plotId: number; kg: number; toPlayer: boolean }
@@ -214,6 +225,7 @@ packages/client/
     | { type: 'npcBlocked'; plotId: number; reason: ErrorCode }
     | { type: 'stageChanged'; plotId: number; stage: Stage }
     | { type: 'weedsAppeared'; plotId: number } | { type: 'pestsAppeared'; plotId: number }
+    | { type: 'dayEnded'; summary: DaySummary }
   type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | { ok: false; error: ErrorCode }
   function computeYieldKg(plot: PlotState): number   // max(min, round(40 + 60*health/100) - lostKg)
   function performTaskOnPlot(plot: PlotState, task: Task): { plot: PlotState; harvestedKg?: number }
@@ -358,6 +370,45 @@ packages/client/
 
 ---
 
+### Task 6b: Ngày, đêm và tổng kết ngày (core)
+
+**Files:**
+- Create: `packages/core/src/day.ts`
+- Modify: `packages/core/src/tick.ts`, `packages/core/src/reducer.ts`
+- Test: `packages/core/src/day.test.ts`
+
+**Interfaces:**
+- Consumes: `GameState`, `DayStats`, `DaySummary`, `CONFIG.day`
+- Produces:
+  ```ts
+  function clockTime(dayElapsedSec: number): { hour: number; minute: number }   // 6 + 16 × elapsed/360
+  function emptyDayStats(startXu: number): DayStats
+  ```
+  Hành vi mới của `tick` và `applyAction` mô tả dưới đây (spec 4.9).
+
+**Luật:**
+- `tick`: khi `daySummary !== null` thì trả state y nguyên, không sự kiện. Mỗi giây chạy bình thường rồi `dayElapsedSec++`; khi đạt `CONFIG.day.lengthSec` thì tạo `daySummary = { ...dayStats, day, endXu: xu, netXu: xu − dayStats.startXu }`, phát `dayEnded`, và dừng các giây còn lại của lần gọi này.
+- `applyAction`: khi `daySummary !== null` mọi action trừ `startNextDay` và `markTutorialSeen` trả `DAY_ENDED`. `startNextDay` khi `daySummary === null` trả `NO_JOB`; ngược lại `day++`, `dayElapsedSec = 0`, `dayStats = emptyDayStats(xu)`, `daySummary = null`.
+- Cập nhật `dayStats`: người chơi làm việc ô Địa chủ → `landlordTasksDone++`, `wagesEarned += wage`; tuốt ô mình (người chơi hoặc NPC) → `riceHarvestedKg += kg`; bán lúa → `riceSalesXu`; mua giống/phân → `suppliesSpentXu`; mua đất, nâng cấp → `landAndUpgradeSpentXu`; NPC làm → `npcWagesPaidXu`.
+
+- [ ] **Step 1: Viết test**
+  ```ts
+  it('clockTime: 0 → 6:00; 180 → 14:00; 360 → 22:00; 90 → 10:00', ...)
+  it('sau 360 giây có daySummary và sự kiện dayEnded đúng một lần', ...)
+  it('tick(s, 400) dừng ở 360 giây, lúa chỉ lớn 360 giây', ...)
+  it('khi hết ngày, tick không đổi state; performTask/buySeeds → DAY_ENDED', ...)
+  it('startNextDay: day 2, dayElapsedSec 0, stats reset với startXu = xu hiện tại', ...)
+  it('startNextDay giữa ngày → NO_JOB', ...)
+  it('tổng kết: làm 2 việc Địa chủ (cày 15 + gặt 20) → landlordTasksDone 2, wagesEarned 35', ...)
+  it('tổng kết: mua 2 giống + 1 đất, bán 100 kg → suppliesSpentXu 60, landAndUpgradeSpentXu 2000, riceSalesXu 800, netXu đúng', ...)
+  ```
+- [ ] **Step 2: Chạy** → FAIL
+- [ ] **Step 3: Viết code**
+- [ ] **Step 4: Chạy `npm test -w @rice/core`** → PASS (gồm cả test Task 3–6; test cũ nào chạy quá 360 giây thì gọi `startNextDay` giữa chừng hoặc đặt `dayElapsedSec` ban đầu cho phù hợp)
+- [ ] **Step 5: Commit** `feat(core): day cycle and daily summary`
+
+---
+
 ### Task 7: Client – khung, store, lưu/tải, màn hình vào game
 
 **Files:**
@@ -379,9 +430,11 @@ packages/client/
   // messages.ts
   const ERROR_MESSAGES: Record<ErrorCode, string>; const STAGE_LABELS: Record<Stage, string>
   const TASK_LABELS: Record<Task, string>; const TOOL_LABELS: Record<ToolId, string>
-  function describeEvent(e: GameEvent): string | null   // null với sự kiện không cần thông báo (stageChanged)
+  function describeEvent(e: GameEvent): string | null   // null với sự kiện không cần thông báo (stageChanged, dayEnded)
+  const CONTROLS: { keys: string; label: string }[]     // đúng các dòng spec 6.3, dùng chung cho StartScreen và Tutorial
+  function continueLabel(s: GameState): string          // 'Tí · Ngày 6 · 3.981 Xu · 4 ô đất'
   // store.ts (zustand)
-  type Panel = null | 'plots' | 'jobs' | 'inventory' | 'landlord' | 'tutorial' | 'pause'
+  type Panel = null | 'plots' | 'jobs' | 'inventory' | 'landlord' | 'tutorial' | 'pause' | 'daySummary'
   interface Toast { id: number; text: string; kind: 'info'|'error' }
   interface GameStore {
     screen: 'start' | 'playing'; game: GameState | null; panel: Panel; toasts: Toast[]
@@ -396,7 +449,7 @@ packages/client/
   function useGameLoop(): void   // setInterval 1s; dt = min(5, giây thực trôi); bỏ qua khi document.hidden; save mỗi CONFIG.autosaveIntervalSec và ở 'beforeunload'
   ```
 
-**StartScreen:** ô tên + nút "Vào làng". Nếu `load()` là `ok` thì có thêm "Chơi tiếp – <tên>" và "Chơi mới" (confirm "Xóa tiến trình cũ và chơi lại từ đầu?"). Nếu `corrupt` thì hiện "Không đọc được bản lưu cũ" và chỉ cho chơi mới. Tên không hợp lệ thì hiện lỗi dưới ô. Seed lấy từ `Date.now()` ở client. Ở task này, khi `screen === 'playing'` chỉ hiện `<pre>` gồm Xu và stage các ô để kiểm tra vòng lặp; Task 8 sẽ thay bằng 3D.
+**StartScreen** (spec 6.1, bố cục theo ảnh mẫu: một khung tối giữa màn hình): tên "Làng Lúa" + dòng phụ; nếu `load()` là `ok` thì nút lớn "Chơi tiếp" với dòng `continueLabel(state)` và nút "Chơi mới" (confirm "Xóa tiến trình cũ và chơi lại từ đầu?", rồi hiện ô tên); nếu không có bản lưu thì ô tên + nút "Vào làng"; nút "Bảng giá & cách chơi" (Task 10 nối vào Tutorial, ở task này để disabled); mục ĐIỀU KHIỂN liệt kê `CONTROLS` (ô phím kiểu `<kbd>` bên trái, mô tả bên phải). Nếu `corrupt` thì hiện "Không đọc được bản lưu cũ" và chỉ cho chơi mới. Tên không hợp lệ thì hiện lỗi dưới ô. Seed lấy từ `Date.now()` ở client. Ở task này, khi `screen === 'playing'` chỉ hiện `<pre>` gồm Xu và stage các ô để kiểm tra vòng lặp; Task 8 sẽ thay bằng 3D.
 
 - [ ] **Step 1: Cài phụ thuộc client, `npm install`**
 - [ ] **Step 2: Viết test**
@@ -410,6 +463,7 @@ packages/client/
   it('storage ném lỗi → save trả false, load none, không ném', ...)
   // messages.test.ts
   it('mọi ErrorCode, Stage, Task, ToolId đều có nhãn tiếng Việt không rỗng', ...)
+  it('continueLabel định dạng số vi-VN: xu 3981, day 6, 4 ô → "Tí · Ngày 6 · 3.981 Xu · 4 ô đất"', ...)
   ```
 - [ ] **Step 3: Chạy `npm test -w @rice/client`** → FAIL
 - [ ] **Step 4: Viết code**
@@ -422,9 +476,9 @@ packages/client/
 ### Task 8: Thế giới 3D – làng và ruộng
 
 **Files:**
-- Create: `src/game/layout.ts`, `src/scene/World.tsx`, `src/scene/Plot.tsx`, `src/scene/RiceField.tsx`, `src/scene/Village.tsx`, `docs/CREDITS.md`
+- Create: `src/game/layout.ts`, `src/scene/lighting.ts`, `src/scene/World.tsx`, `src/scene/Plot.tsx`, `src/scene/RiceField.tsx`, `src/scene/Village.tsx`, `docs/CREDITS.md`
 - Modify: `src/App.tsx` (thay `<pre>` bằng `<World/>`)
-- Test: `packages/client/src/game/layout.test.ts`
+- Test: `packages/client/src/game/layout.test.ts`, `packages/client/src/scene/lighting.test.ts`
 
 **Interfaces:**
 - Consumes: `GameStore.game.plots`
@@ -442,6 +496,7 @@ packages/client/
 - `Plot.tsx` nhận `plot: PlotState`, đổi màu đất theo stage (dry `#a8875a`, plowed `#5b4632`, còn lại bùn `#4a3b2a`). Mặt nước xanh trong suốt có chiều cao `0.02 + 0.15 × water/100`. Cỏ: vài chấm xanh đậm. Sâu: vài chấm đỏ cam. Ô `forSale` có cọc biển chữ "BÁN" (drei `Text`). `userData.plotId` gắn trên mesh mặt đất cho raycast.
 - `RiceField.tsx` dùng một `InstancedMesh` cho mỗi ô: 64 cụm lúa (lưới 8×8). Chiều cao và màu theo stage: seedling 0.1 m xanh nhạt, young 0.3, green 0.7 xanh `#3f9b3a`, flowering 0.9 có bông, ripe 0.9 vàng `#e2b53c`, bundled 6 bó lúa nằm, dry/plowed ẩn.
 - `Village.tsx`: nhà Địa chủ (khối tường gạch `#b5523b`, mái ngói hình lăng trụ `#a63a2a`), sân phơi xi măng, Địa chủ NPC (thân trụ + đầu cầu + nón lá hình nón) đứng ở `HOUSE_DOOR`, 12 cây dừa dọc rìa, 3 bụi tre, 2 cây rơm, kênh nước dọc một cạnh cánh đồng.
+- `World.tsx` đổi ánh sáng theo `clockTime(game.dayElapsedSec)` (spec 7): màu trời, cường độ và hướng nắng, màu hoàng hôn 17–19 giờ, ánh trăng và cửa sổ nhà sáng (vật liệu phát sáng) 19–22 giờ. Nội suy mượt giữa các mốc. Hàm thuần `lightingAt(hour: number): { sky: string; sunIntensity: number; sunColor: string; ambient: number; windowGlow: number }` trong `src/scene/lighting.ts`, test: `lightingAt(12).sunIntensity > lightingAt(21).sunIntensity`, `lightingAt(21).windowGlow > 0`, `lightingAt(10).windowGlow === 0`.
 - Mô hình dừng ở khối hình học trong code. Nếu tải được Kenney Nature Kit (CC0, kenney.nl/assets/nature-kit), dùng `tree_palm*.glb` cho cây dừa (đặt tại `packages/client/public/models/`). Ghi nguồn đã dùng vào `docs/CREDITS.md`.
 
 - [ ] **Step 1: Viết test `layout.test.ts`**
@@ -504,9 +559,9 @@ packages/client/
 ### Task 10: HUD và các bảng
 
 **Files:**
-- Create: `src/ui/Hud.tsx`, `src/ui/PlotBoard.tsx`, `src/ui/JobBoard.tsx`, `src/ui/Inventory.tsx`, `src/ui/LandlordHouse.tsx`, `src/ui/Tutorial.tsx`, `src/ui/PauseMenu.tsx`, `src/ui/hotkeys.ts`
+- Create: `src/ui/DaySummary.tsx`, `src/ui/Hud.tsx`, `src/ui/PlotBoard.tsx`, `src/ui/JobBoard.tsx`, `src/ui/Inventory.tsx`, `src/ui/LandlordHouse.tsx`, `src/ui/Tutorial.tsx`, `src/ui/PauseMenu.tsx`, `src/ui/hotkeys.ts`
 - Modify: `src/App.tsx`, `src/ui/messages.ts`
-- Test: `packages/client/src/ui/tutorial.test.ts`, `packages/client/src/ui/jobs.test.ts`
+- Test: `packages/client/src/ui/tutorial.test.ts`, `packages/client/src/ui/jobs.test.ts`, `packages/client/src/ui/daySummary.test.ts`
 
 **Interfaces:**
 - Consumes: `GameStore`, `CONFIG`, `availableTasks`, `isNpcUnlocked`, `ownedPlotCount`, `HOUSE_DOOR`, `HOUSE_INTERACT_RADIUS`
@@ -522,12 +577,15 @@ packages/client/
   function tutorialSections(): { id: 'controls'|'wages'|'prices'|'timing'|'roadmap'; title: string; rows: [string, string][] }[]
     // mọi số lấy từ CONFIG
   ```
-- **Hud:** góc trái trên `<tên> · <xu> Xu`; tâm ngắm; khung thông tin ô đang nhắm (spec 6.4: số ô, chủ, giai đoạn, nước %, sức khỏe, việc cần làm + tiền công nếu là ô Địa chủ); thanh tiến trình; thanh 6 công cụ (phím, tên, cấp); gợi ý "Nhấn E để vào nhà Địa chủ" khi đứng gần; nút "?" mở hướng dẫn.
+- **Hud:** góc trái trên `<tên> · <xu> Xu`; góc phải trên `Ngày <n> · HH:MM` từ `clockTime`; tâm ngắm; khung thông tin ô đang nhắm (spec 6.4: số ô, chủ, giai đoạn, nước %, sức khỏe, việc cần làm + tiền công nếu là ô Địa chủ); thanh tiến trình; thanh 6 công cụ (phím, tên, cấp); gợi ý "Nhấn E để vào nhà Địa chủ" khi đứng gần; nút "?" mở hướng dẫn.
 - **PlotBoard:** lưới 4×5 (spec 6.5), mỗi ô: số, chủ (Địa chủ / Bạn / Đang bán), giai đoạn, biểu tượng 💧 (nước < 30 ở giai đoạn cần nước) 🌿 🐛 🌾 (ripe). Bấm → `teleportTo(id)` và đóng bảng.
 - **JobBoard:** bảng từ `listLandlordJobs`. Bấm một dòng → `teleportTo`.
 - **LandlordHouse:** 5 thẻ. Bán lúa (ô nhập kg + "Bán hết"); Mua giống/phân (số lượng); Mua đất (danh sách ô `forSale` với giá); Nâng cấp công cụ (cấp hiện tại, giá cấp sau, hoặc "Tối đa"); Thuê NPC (khóa với chữ "Cần sở hữu 5 ô" khi chưa đủ; mở thì danh sách ô của người chơi, công tắc, lý do bị chặn nếu có). Mọi nút gọi `dispatch`.
+- `DaySummary.tsx` export `summaryRows(s: DaySummary): { label: string; value: string; tone: 'plus'|'minus'|'neutral' }[]`.
 - **Inventory:** giống, phân, lúa (kg), cấp công cụ, danh sách ô sở hữu.
 - **Tutorial:** 5 thẻ từ `tutorialSections()`. Tự mở khi vào game nếu `!tutorialSeen`; đóng thì `dispatch({ type:'markTutorialSeen' })`.
+- **DaySummary:** khi `game.daySummary !== null` thì panel bắt buộc là `'daySummary'` (Esc và phím tắt khác không đóng). Hiện tiêu đề `TỔNG KẾT NGÀY <n>` và các dòng theo spec 4.9 (lãi xanh, lỗ đỏ, dấu +/−). Nút "Ngủ – sang ngày mới" → `dispatch({ type:'startNextDay' })`, đóng panel.
+- **StartScreen:** bật nút "Bảng giá & cách chơi" mở `Tutorial` ngay trên màn hình đầu.
 - **PauseMenu:** Tiếp tục · Hướng dẫn · Lưu (toast "Đã lưu") · Về màn hình đầu (lưu rồi `exitToStart`).
 
 - [ ] **Step 1: Viết test**
@@ -538,6 +596,8 @@ packages/client/
   it('bảng thời gian có 180/300/300/240 giây', ...)
   // jobs.test.ts
   it('listLandlordJobs chỉ lấy ô Địa chủ, secondsLeft đúng, sắp tăng dần', ...)
+  // daySummary.test.ts
+  it('summaryRows(summary) trả đúng 9 dòng, lãi/lỗ = endXu − startXu, có dấu', ...)
   ```
 - [ ] **Step 2: Chạy** → FAIL
 - [ ] **Step 3: Viết code**
@@ -580,6 +640,8 @@ packages/client/
 - [ ] **Step 5: Báo người dùng** cần bật Settings → Pages → Source: "GitHub Actions" và push lên GitHub (chỉ push khi người dùng đồng ý).
 
 **Checklist chơi tay (spec mục 1 và 6):**
+- Màn hình đầu giống bố cục spec 6.1, có danh sách điều khiển và nút bảng giá.
+- Chơi tới 22:00 → bảng tổng kết đúng số liệu → "Ngủ" → Ngày 2, 6:00; trời đổi màu theo giờ.
 - Đặt tên → hướng dẫn tự mở → đóng → F5 → "Chơi tiếp" không mở lại hướng dẫn.
 - Làm thuê đủ các loại việc, thấy công cộng đúng bảng.
 - Mua giống, phân, đất; tự làm một vụ trên ô mình; bán lúa 8 Xu/kg.

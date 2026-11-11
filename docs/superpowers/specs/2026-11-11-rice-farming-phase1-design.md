@@ -19,7 +19,7 @@ Ngày: 2026-11-11 · Trạng thái: chờ duyệt
 | 1 (tài liệu này) | Một người chơi, trình duyệt, lưu localStorage |
 | 2 | Server Colyseus dùng lại `core`, nhiều người chơi một làng, tài khoản, database |
 | 3 | Kinh tế giữa người chơi: Địa chủ là người chơi, thuê người chơi khác, giá động |
-| 4 | Thời tiết, ngày/đêm, âm thanh, điện thoại |
+| 4 | Thời tiết, âm thanh (kèm chỉnh âm lượng), đa ngôn ngữ, điện thoại |
 
 ## 2. Công nghệ
 
@@ -149,6 +149,19 @@ tick(state: GameState, dtSeconds: number): { state, events }
 ### 4.8 Thời gian
 - Client gọi `tick()` mỗi giây. Thời gian chỉ trôi khi game đang mở và tab đang hiện. Mở các bảng giao diện không dừng thời gian.
 
+### 4.9 Ngày, đêm và tổng kết ngày
+- Một ngày trong game chạy từ **6:00 tới 22:00**, kéo dài **360 giây thật**. Giờ trong game = 6 + 16 × (số giây đã trôi trong ngày / 360).
+- Ngày đầu tiên là Ngày 1.
+- Lúc 22:00: game dừng (lúa không lớn, không có trừ điểm, NPC không làm), mở **bảng tổng kết ngày**. Trong lúc bảng đang mở, mọi hành động bị từ chối với mã `DAY_ENDED`, trừ "Ngủ – sang ngày mới" và đánh dấu đã xem hướng dẫn.
+- Bấm **"Ngủ – sang ngày mới"**: sang ngày kế tiếp lúc 6:00. Đêm bị bỏ qua, lúa không lớn thêm.
+- Số liệu tổng kết, tính từ 6:00 tới 22:00 của ngày đó:
+  - Số việc làm thuê đã làm, tiền công nhận được.
+  - Lúa thu hoạch được (kg, chỉ ô của người chơi), tiền bán lúa.
+  - Tiền mua giống và phân; tiền mua đất và nâng cấp công cụ; tiền trả công NPC.
+  - Lãi/lỗ trong ngày = Xu lúc 22:00 − Xu lúc 6:00; Xu hiện có.
+- Đóng game giữa chừng thì lần sau chơi tiếp đúng giờ đó. Đóng khi bảng tổng kết đang mở thì lần sau bảng hiện lại.
+- Giai đoạn 2 (nhiều người chơi) sẽ không dừng thế giới; mỗi người tự xem tổng kết. Không thuộc phạm vi Giai đoạn 1.
+
 ## 5. Bảng số liệu (`config.ts`)
 
 ### 5.1 Chung
@@ -165,6 +178,7 @@ tick(state: GameState, dtSeconds: number): { state, events }
 | Số ô để mở khóa thuê NPC | 5 |
 | Việc chờ trước khi người làm của Địa chủ làm thay | 60 giây |
 | Việc chờ trước khi NPC của người chơi làm | 20 giây |
+| Độ dài một ngày | 360 giây thật, từ 6:00 tới 22:00 |
 
 ### 5.2 Tiền công (mỗi ô, mỗi lần)
 | Việc | Xu |
@@ -189,8 +203,14 @@ tick(state: GameState, dtSeconds: number): { state, events }
 Chỉ hỗ trợ máy tính có bàn phím và chuột.
 
 ### 6.1 Màn hình vào game
-- Nhập tên (2–16 ký tự, bỏ khoảng trắng hai đầu), nút "Vào làng".
-- Có bản lưu thì hiện thêm "Chơi tiếp – <tên>" và "Chơi mới". "Chơi mới" hỏi xác nhận trước khi xóa bản lưu.
+Một khung giữa màn hình, theo thứ tự từ trên xuống:
+1. Tên game **"Làng Lúa"** và dòng phụ "Cày cấy, làm thuê và trở thành Địa chủ".
+2. **Có bản lưu:** nút lớn "Chơi tiếp" kèm dòng nhỏ `<tên> · Ngày <n> · <Xu> Xu · <số ô> ô đất`, bên dưới là nút "Chơi mới". "Chơi mới" hỏi xác nhận trước khi xóa bản lưu, rồi chuyển sang ô nhập tên.
+   **Chưa có bản lưu:** ô nhập tên (2–16 ký tự, bỏ khoảng trắng hai đầu) và nút "Vào làng".
+3. Nút "Bảng giá & cách chơi" mở bảng hướng dẫn (mục 6.2).
+4. Mục **ĐIỀU KHIỂN**: danh sách phím như bảng 6.3, mỗi dòng có ô phím bên trái và mô tả bên phải.
+
+Không có chọn ngôn ngữ và âm lượng ở Giai đoạn 1.
 
 ### 6.2 Hướng dẫn
 - Tự mở khi chơi lần đầu. Sau đó mở bằng phím H hoặc nút "?".
@@ -213,6 +233,7 @@ Chỉ hỗ trợ máy tính có bàn phím và chuột.
 
 ### 6.4 HUD
 - Góc trái trên: tên và Xu.
+- Góc phải trên: đồng hồ, ví dụ `Ngày 3 · 14:20`.
 - Giữa: tâm ngắm. Khi nhìn vào ô thì hiện số ô, chủ, giai đoạn, nước, sức khỏe, việc cần làm và tiền công (nếu là ruộng Địa chủ). Thanh tiến trình khi đang thao tác.
 - Giữa dưới: thanh 6 công cụ. Tay cầm công cụ hiện trong cảnh 3D.
 - Góc phải: thông báo ngắn tự ẩn sau 4 giây.
@@ -222,12 +243,14 @@ Chỉ hỗ trợ máy tính có bàn phím và chuột.
 - **Bảng việc (J):** việc trên ruộng Địa chủ, tiền công, số giây còn lại. Bấm vào việc để dịch chuyển tới ô.
 - **Nhà Địa chủ (E):** các thẻ Bán lúa · Mua giống/phân · Mua đất · Nâng cấp công cụ · Thuê NPC (khóa khi chưa đủ 5 ô; mở thì hiện danh sách ô của người chơi với công tắc "Giao cho NPC").
 - **Kho (I):** giống, phân, lúa (kg), cấp công cụ, các ô sở hữu.
+- **Tổng kết ngày:** tự mở lúc 22:00, hiện các số liệu ở mục 4.9 và nút "Ngủ – sang ngày mới". Không đóng được bằng Esc.
 
 ## 7. Thế giới 3D
 - Cánh đồng 4 × 5 ô có bờ ruộng, kênh nước, nhà Địa chủ tường gạch mái ngói có sân phơi, hàng dừa, bụi tre, cây rơm, bầu trời xanh.
 - Hình mỗi giai đoạn: đất khô nâu → đất bùn → mạ lấm tấm → lúa xanh cao dần → bông trĩu → vàng → bó lúa. Mặt nước cao thấp theo mực nước. Cỏ và sâu hiện thành chấm trên ô. Ô đang bán có cọc biển "Bán".
 - Cây lúa vẽ bằng instancing.
 - Địa chủ NPC đứng trước nhà. NPC làm thuê đi tới ô, làm việc rồi đi tiếp. NPC chỉ để nhìn; luật chơi do `core` quyết định.
+- Ánh sáng theo giờ: 6:00–17:00 trời xanh, nắng; 17:00–19:00 hoàng hôn cam; 19:00–22:00 tối có trăng, cửa sổ nhà Địa chủ sáng đèn. Chuyển màu mượt.
 - Va chạm: hình hộp quanh nhà và giới hạn rìa bản đồ, không dùng thư viện vật lý.
 
 ## 8. Lưu dữ liệu
@@ -237,7 +260,7 @@ Chỉ hỗ trợ máy tính có bàn phím và chuột.
 - Mọi lần đọc/ghi localStorage bọc trong try/catch. Không ghi được thì vẫn chơi bình thường và hiện cảnh báo.
 
 ## 9. Xử lý lỗi
-- `applyAction` trả về mã lỗi thay vì ném ngoại lệ. Các mã: `WRONG_STAGE`, `WRONG_TOOL`, `NOT_ENOUGH_XU`, `NO_SEED`, `NO_FERTILIZER`, `NOT_OWNER`, `NOT_FOR_SALE`, `NO_JOB`, `NPC_LOCKED`, `MAX_LEVEL`, `NOT_ENOUGH_RICE`.
+- `applyAction` trả về mã lỗi thay vì ném ngoại lệ. Các mã: `WRONG_STAGE`, `WRONG_TOOL`, `NOT_ENOUGH_XU`, `NO_SEED`, `NO_FERTILIZER`, `NOT_OWNER`, `NOT_FOR_SALE`, `NO_JOB`, `NPC_LOCKED`, `MAX_LEVEL`, `NOT_ENOUGH_RICE`, `DAY_ENDED`, `INVALID_AMOUNT` (số lượng mua/bán không phải số nguyên ≥ 1).
 - Client đổi mã lỗi thành thông báo tiếng Việt, ví dụ "Ô này chưa cày, chưa gieo mạ được".
 
 ## 10. Kiểm thử
@@ -248,9 +271,10 @@ Chỉ hỗ trợ máy tính có bàn phím và chuột.
   - trả công làm thuê, người làm Địa chủ làm thay sau 60 giây;
   - mua đất, giống, phân, bán lúa, nâng cấp;
   - mở khóa và hoạt động của NPC, NPC dừng khi thiếu Xu hoặc vật tư;
+  - ngày kết thúc đúng 360 giây, số liệu tổng kết, chặn hành động khi hết ngày, sang ngày mới;
   - mọi mã lỗi;
   - cùng seed thì cùng kết quả.
 - **Client:** danh sách kiểm tra bằng tay cho từng màn hình và phím. Đo khung hình bằng công cụ của trình duyệt.
 
 ## 11. Không làm ở Giai đoạn 1
-Nhiều người chơi, server, tài khoản, điện thoại, âm thanh, ngày/đêm, thời tiết, giá lúa dao động, giao dịch giữa người chơi.
+Nhiều người chơi, server, tài khoản, điện thoại, âm thanh và âm lượng, đa ngôn ngữ, thời tiết, giá lúa dao động, giao dịch giữa người chơi.
