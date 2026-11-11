@@ -3,6 +3,7 @@ import type { ErrorCode, GameEvent } from './actions'
 import { nextRandom } from './rng'
 import type { GameState, PlotState } from './state'
 import { availableTasks, performTaskOnPlot } from './tasks'
+import { endDay } from './day'
 
 const NEXT_STAGE: Partial<Record<Stage, Stage>> = {
   seedling: 'seedlingReady',
@@ -110,10 +111,14 @@ function npcStep(state: GameState, index: number, task: Task, events: GameEvent[
   }
   const wage = CONFIG.wages[task]
   state.xu -= wage
+  state.dayStats.npcWagesPaidXu += wage
   if (task === 'sow') state.inventory.seeds--
   if (task === 'fertilize') state.inventory.fertilizer--
   const result = performTaskOnPlot(plot, task)
-  if (result.harvestedKg !== undefined) state.inventory.riceKg += result.harvestedKg
+  if (result.harvestedKg !== undefined) {
+    state.inventory.riceKg += result.harvestedKg
+    state.dayStats.riceHarvestedKg += result.harvestedKg
+  }
   state.plots[index] = { ...result.plot, npcBlocked: null }
   events.push({ type: 'npcDid', plotId: plot.id, task, wage })
 }
@@ -149,6 +154,13 @@ export function tick(state: GameState, dtSeconds: number): { state: GameState; e
   const seconds = Math.floor(dtSeconds)
   const next = structuredClone(state)
   if (!Number.isFinite(seconds) || seconds <= 0) return { state: next, events }
-  for (let i = 0; i < seconds; i++) stepOneSecond(next, events)
+  for (let i = 0; i < seconds && next.daySummary === null; i++) {
+    stepOneSecond(next, events)
+    next.dayElapsedSec++
+    if (next.dayElapsedSec >= CONFIG.day.lengthSec) {
+      endDay(next)
+      events.push({ type: 'dayEnded', summary: next.daySummary! })
+    }
+  }
   return { state: next, events }
 }

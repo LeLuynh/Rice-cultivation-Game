@@ -2,6 +2,7 @@ import { CONFIG, type Stage, type Task, type ToolId } from './config'
 import type { Action, ActionResult, GameEvent } from './actions'
 import type { GameState } from './state'
 import { availableTasks, performTaskOnPlot } from './tasks'
+import { beginNextDay } from './day'
 
 const STAGE_BOUND: Partial<Record<Task, true>> = {
   plow: true, sow: true, transplant: true, harvest: true, thresh: true, drain: true,
@@ -38,10 +39,15 @@ function performTask(state: GameState, action: Extract<Action, { type: 'performT
   if (!mine) {
     const amount = CONFIG.wages[task]
     next.xu += amount
+    next.dayStats.landlordTasksDone += 1
+    next.dayStats.wagesEarned += amount
     events.push({ type: 'wagePaid', plotId, task, amount })
   }
   if (harvestedKg !== undefined) {
-    if (mine) next.inventory.riceKg += harvestedKg
+    if (mine) {
+      next.inventory.riceKg += harvestedKg
+      next.dayStats.riceHarvestedKg += harvestedKg
+    }
     events.push({ type: 'riceHarvested', plotId, kg: harvestedKg, toPlayer: mine })
   }
   if (newPlot.stage !== plot.stage) events.push({ type: 'stageChanged', plotId, stage: newPlot.stage })
@@ -68,20 +74,33 @@ function buySupplies(state: GameState, item: 'seeds' | 'fertilizer', qty: number
   if (!isValidAmount(qty)) return { ok: false, error: 'INVALID_AMOUNT' }
   const cost = qty * (item === 'seeds' ? CONFIG.seedPrice : CONFIG.fertilizerPrice)
   if (state.xu < cost) return { ok: false, error: 'NOT_ENOUGH_XU' }
-  return mutate(state, next => { next.xu -= cost; next.inventory[item] += qty })
+  return mutate(state, next => {
+    next.xu -= cost
+    next.inventory[item] += qty
+    next.dayStats.suppliesSpentXu += cost
+  })
 }
 
 function buyLand(state: GameState, plotId: number): ActionResult {
   const index = state.plots.findIndex(p => p.id === plotId)
   if (index < 0 || state.plots[index].owner !== 'forSale') return { ok: false, error: 'NOT_FOR_SALE' }
   if (state.xu < CONFIG.landPrice) return { ok: false, error: 'NOT_ENOUGH_XU' }
-  return mutate(state, next => { next.xu -= CONFIG.landPrice; next.plots[index].owner = 'player' })
+  return mutate(state, next => {
+    next.xu -= CONFIG.landPrice
+    next.plots[index].owner = 'player'
+    next.dayStats.landAndUpgradeSpentXu += CONFIG.landPrice
+  })
 }
 
 function sellRice(state: GameState, kg: number): ActionResult {
   if (!isValidAmount(kg)) return { ok: false, error: 'INVALID_AMOUNT' }
   if (kg > state.inventory.riceKg) return { ok: false, error: 'NOT_ENOUGH_RICE' }
-  return mutate(state, next => { next.inventory.riceKg -= kg; next.xu += kg * CONFIG.ricePricePerKg })
+  return mutate(state, next => {
+    const income = kg * CONFIG.ricePricePerKg
+    next.inventory.riceKg -= kg
+    next.xu += income
+    next.dayStats.riceSalesXu += income
+  })
 }
 
 function upgradeTool(state: GameState, tool: ToolId): ActionResult {
@@ -91,7 +110,11 @@ function upgradeTool(state: GameState, tool: ToolId): ActionResult {
   const target = (level + 1) as 2 | 3
   const cost = CONFIG.toolUpgradeCost[target]
   if (state.xu < cost) return { ok: false, error: 'NOT_ENOUGH_XU' }
-  return mutate(state, next => { next.xu -= cost; next.toolLevels[tool] = target })
+  return mutate(state, next => {
+    next.xu -= cost
+    next.toolLevels[tool] = target
+    next.dayStats.landAndUpgradeSpentXu += cost
+  })
 }
 
 function setNpc(state: GameState, plotId: number, enabled: boolean): ActionResult {
@@ -105,6 +128,11 @@ function setNpc(state: GameState, plotId: number, enabled: boolean): ActionResul
 }
 
 export function applyAction(state: GameState, action: Action): ActionResult {
+  const dayOver = state.daySummary !== null
+  if (action.type === 'startNextDay') {
+    return dayOver ? mutate(state, beginNextDay) : { ok: false, error: 'NO_JOB' }
+  }
+  if (dayOver && action.type !== 'markTutorialSeen') return { ok: false, error: 'DAY_ENDED' }
   switch (action.type) {
     case 'performTask': return performTask(state, action)
     case 'buySeeds': return buySupplies(state, 'seeds', action.qty)

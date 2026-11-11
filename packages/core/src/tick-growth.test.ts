@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNewGame, freshPlot, type GameState, type PlotState } from './state'
 import { tick } from './tick'
+import { applyAction } from './reducer'
 
 function setup(patch: Partial<PlotState> = {}, id = 1): GameState {
   const s = createNewGame('A', 1)
@@ -8,6 +9,18 @@ function setup(patch: Partial<PlotState> = {}, id = 1): GameState {
   return s
 }
 const p1 = (s: GameState): PlotState => s.plots[0]
+/** Cho thời gian trôi n giây, tự sang ngày mới khi hết ngày. */
+function advance(s: GameState, n: number): GameState {
+  for (let i = 0; i < n; i++) {
+    s = tick(s, 1).state
+    if (s.daySummary) {
+      const r = applyAction(s, { type: 'startNextDay' })
+      if (!r.ok) throw new Error(r.error)
+      s = r.state
+    }
+  }
+  return s
+}
 
 describe('tick', () => {
   it('mạ non sau 180 giây thành mạ đủ lớn', () => {
@@ -18,15 +31,16 @@ describe('tick', () => {
   })
 
   it('cả vụ tự lớn: young 300 → green 300 → flowering 240 → ripe', () => {
-    const s = setup({ stage: 'young', water: 100, fertilized: true, drained: true })
-    let r = tick(s, 299)
-    expect(p1(r.state).stage).toBe('young')
-    r = tick(r.state, 1)
-    expect(p1(r.state).stage).toBe('green')
-    r = tick(r.state, 300)
-    expect(p1(r.state).stage).toBe('flowering')
-    r = tick(r.state, 240)
-    expect(p1(r.state).stage).toBe('ripe')
+    // ô người chơi để người làm Địa chủ không can thiệp; vụ dài hơn một ngày nên sang ngày mới khi cần
+    const s = setup({ stage: 'young', water: 100, fertilized: true, drained: true, owner: 'player' })
+    let cur = advance(s, 299)
+    expect(p1(cur).stage).toBe('young')
+    cur = advance(cur, 1)
+    expect(p1(cur).stage).toBe('green')
+    cur = advance(cur, 300)
+    expect(p1(cur).stage).toBe('flowering')
+    cur = advance(cur, 240)
+    expect(p1(cur).stage).toBe('ripe')
   })
 
   it('nước giảm 5 mỗi 10 giây ở lúa non', () => {

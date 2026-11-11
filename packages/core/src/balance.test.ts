@@ -17,6 +17,10 @@ describe('cân bằng (đối chiếu spec 5.3)', () => {
         }
       }
       s = tick(s, 1).state
+      if (s.daySummary) {
+        const r = applyAction(s, { type: 'startNextDay' })
+        if (r.ok) s = r.state
+      }
     }
     console.log(`[cân bằng] Xu sau 17 phút làm thuê: ${s.xu}`)
     expect(s.xu).toBeGreaterThan(500)
