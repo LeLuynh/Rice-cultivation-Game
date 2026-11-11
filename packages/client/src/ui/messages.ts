@@ -1,4 +1,4 @@
-import { ownedPlotCount, type ErrorCode, type GameEvent, type GameState, type Stage, type Task, type ToolId } from '@rice/core'
+import { CONFIG, ownedPlotCount, type ErrorCode, type GameEvent, type GameState, type Stage, type Task, type ToolId } from '@rice/core'
 
 export const formatNumber = (n: number): string => n.toLocaleString('vi-VN')
 export const formatXu = (n: number): string => `${formatNumber(n)} Xu`
@@ -12,7 +12,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   NOT_OWNER: 'Ô này không phải của bạn',
   NOT_FOR_SALE: 'Ô này không bán',
   NO_JOB: 'Ô này đang không cần việc đó',
-  NPC_LOCKED: 'Cần sở hữu 5 ô để thuê NPC',
+  NPC_LOCKED: `Cần sở hữu ${CONFIG.npcUnlockPlotCount} ô để thuê NPC`,
   MAX_LEVEL: 'Công cụ đã ở cấp tối đa',
   NOT_ENOUGH_RICE: 'Kho không đủ lúa',
   INVALID_AMOUNT: 'Số lượng phải là số nguyên lớn hơn 0',

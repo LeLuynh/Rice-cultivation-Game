@@ -125,5 +125,6 @@ export function Player() {
     store.setActionProgress(Math.round(progress.current * 100) / 100)
   })
 
-  return <PointerLockControls />
+  // chỉ khóa chuột khi bấm vào khung game, không phải khi bấm nút trong các bảng
+  return <PointerLockControls selector="canvas" />
 }

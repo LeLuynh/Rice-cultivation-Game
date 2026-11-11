@@ -100,7 +100,11 @@ function npcShortfall(state: GameState, task: Task): ErrorCode | null {
 /** NPC người chơi thuê làm việc trên ô đã giao (spec 4.7). */
 function npcStep(state: GameState, index: number, task: Task, events: GameEvent[]): void {
   const plot = state.plots[index]
-  if (plot.jobAgeSec[task]! < CONFIG.playerNpcDelaySec) return
+  if (plot.jobAgeSec[task]! < CONFIG.playerNpcDelaySec) {
+    // việc bị chặn đã được làm (hoặc chưa tới lượt): không còn bị chặn nữa
+    plot.npcBlocked = null
+    return
+  }
   const reason = npcShortfall(state, task)
   if (reason) {
     if (plot.npcBlocked !== reason) {
@@ -126,7 +130,10 @@ function npcStep(state: GameState, index: number, task: Task, events: GameEvent[
 function stepWorkers(state: GameState, index: number, events: GameEvent[]): void {
   const plot = state.plots[index]
   const task = ageJobs(plot)
-  if (task === null) return
+  if (task === null) {
+    plot.npcBlocked = null
+    return
+  }
   if (plot.owner === 'landlord') landlordWorkerStep(state, index, task, events)
   else if (plot.owner === 'player' && plot.npcEnabled) npcStep(state, index, task, events)
 }

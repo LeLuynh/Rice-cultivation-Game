@@ -25,7 +25,8 @@ export function availableTasks(plot: PlotState): Task[] {
 
 /** Sản lượng (kg) của ô khi tuốt lúa (spec 4.3). */
 export function computeYieldKg(plot: PlotState): number {
-  const base = Math.round(40 + (60 * plot.health) / 100)
+  const { min, max } = CONFIG.yieldKg
+  const base = Math.round(min + ((max - min) * plot.health) / 100)
   return Math.max(CONFIG.yieldKg.min, base - plot.lostKg)
 }
 

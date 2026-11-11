@@ -103,4 +103,5 @@ kbd { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #
 .slot-active { border-color: var(--accent); }
 .slot-key { position: absolute; top: 2px; left: 6px; font-size: 0.7rem; color: var(--muted); }
 .slot-level { font-size: 0.7rem; color: var(--accent); }
+.save-warning { position: absolute; top: 56px; left: 12px; padding: 6px 12px; border-radius: 8px; background: #7a2525e6; font-size: 0.85rem; }
 .click-hint { position: fixed; left: 50%; top: 20%; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: #0008; pointer-events: none; z-index: 5; font-size: 0.85rem; opacity: 0.8; }

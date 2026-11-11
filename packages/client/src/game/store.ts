@@ -20,6 +20,8 @@ export interface GameStore {
   actionProgress: number | null
   nearHouse: boolean
   workerVisits: WorkerVisit[]
+  /** Lần lưu gần nhất thất bại (trình duyệt chặn bộ nhớ hoặc đầy). */
+  saveFailed: boolean
   startNew(name: string): void
   continueGame(): void
   exitToStart(): void
@@ -44,7 +46,17 @@ let nextVisitId = 1
 /** Panel bắt buộc khi đang có tổng kết ngày. */
 const panelFor = (game: GameState, wanted: Panel): Panel => (game.daySummary ? 'daySummary' : wanted)
 
+export const SAVE_FAILED_TEXT = 'Không lưu được tiến trình – trình duyệt đang chặn bộ nhớ. Tiến trình sẽ mất khi đóng trang.'
+const TRANSIENT = { workerVisits: [], targetPlotId: null, actionProgress: null, nearHouse: false, teleportTarget: null }
+
 export const useGame = create<GameStore>((set, get) => {
+  /** Lưu và cảnh báo một lần khi bắt đầu thất bại (spec 8). */
+  const persist = (game: GameState): boolean => {
+    const ok = saveStore.save(game)
+    if (!ok && !get().saveFailed) get().pushToast(SAVE_FAILED_TEXT, 'error')
+    if (ok !== !get().saveFailed) set({ saveFailed: !ok })
+    return ok
+  }
   const toastEvents = (events: GameEvent[]): void => {
     for (const e of events) {
       const text = describeEvent(e)
@@ -63,23 +75,25 @@ export const useGame = create<GameStore>((set, get) => {
     actionProgress: null,
     nearHouse: false,
     workerVisits: [],
+    saveFailed: false,
 
     startNew(name) {
       saveStore.clear()
       const game = createNewGame(name, Date.now() >>> 0)
-      saveStore.save(game)
-      set({ screen: 'playing', game, panel: null, toasts: [], selectedTool: 'hoe' })
+      set({ ...TRANSIENT, screen: 'playing', game, panel: null, toasts: [], selectedTool: 'hoe', saveFailed: false })
+      persist(game)
     },
 
     continueGame() {
       const loaded = saveStore.load()
       if (loaded.status !== 'ok') return
-      set({ screen: 'playing', game: loaded.state, panel: panelFor(loaded.state, null), toasts: [] })
+      set({ ...TRANSIENT, screen: 'playing', game: loaded.state, panel: panelFor(loaded.state, null), toasts: [] })
     },
 
     exitToStart() {
       get().saveNow()
-      set({ screen: 'start', game: null, panel: null })
+      if (document.pointerLockElement) document.exitPointerLock()
+      set({ ...TRANSIENT, screen: 'start', game: null, panel: null })
     },
 
     dispatch(action) {
@@ -92,7 +106,7 @@ export const useGame = create<GameStore>((set, get) => {
       }
       set({ game: result.state })
       toastEvents(result.events)
-      if (action.type !== 'performTask') saveStore.save(result.state)
+      if (action.type !== 'performTask') persist(result.state)
       return true
     },
 
@@ -109,13 +123,16 @@ export const useGame = create<GameStore>((set, get) => {
       toastEvents(result.events)
       if (result.events.some(e => e.type === 'dayEnded')) {
         set({ panel: 'daySummary' })
-        saveStore.save(result.state)
+        persist(result.state)
       }
     },
 
     setPanel(p) {
-      const { game } = get()
-      set({ panel: game ? panelFor(game, p) : p })
+      const { game, panel } = get()
+      // rời bảng hướng dẫn bằng bất kỳ cách nào (nút, Esc, H) đều tính là đã xem
+      if (panel === 'tutorial' && p !== 'tutorial' && game && !game.tutorialSeen) get().dispatch({ type: 'markTutorialSeen' })
+      const current = get().game
+      set({ panel: current ? panelFor(current, p) : p })
     },
 
     selectTool(t) { set({ selectedTool: t }) },
@@ -133,7 +150,7 @@ export const useGame = create<GameStore>((set, get) => {
 
     saveNow() {
       const { game } = get()
-      return game ? saveStore.save(game) : false
+      return game ? persist(game) : false
     },
   }
 })

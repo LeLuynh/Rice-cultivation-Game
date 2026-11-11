@@ -106,7 +106,7 @@ export function LandlordHouse() {
               {p.npcBlocked && <span className="field-error">Dừng: {ERROR_MESSAGES[p.npcBlocked]}</span>}
             </div>
           ))}
-          {unlocked && <p className="muted">NPC làm mỗi việc sau 20 giây, bạn trả công theo bảng tiền công.</p>}
+          {unlocked && <p className="muted">NPC làm mỗi việc sau {CONFIG.playerNpcDelaySec} giây, bạn trả công theo bảng tiền công.</p>}
         </div>
       )}
     </Modal>

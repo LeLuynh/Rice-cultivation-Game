@@ -10,6 +10,7 @@ import { Inventory, JobBoard, PlotBoard } from './ui/Boards'
 import { LandlordHouse } from './ui/LandlordHouse'
 import { DaySummary, PauseMenu } from './ui/Menus'
 import { useHotkeys } from './ui/hotkeys'
+import { ErrorBoundary } from './ui/ErrorBoundary'
 
 function Panels() {
   const panel = useGame(s => s.panel)
@@ -65,7 +66,9 @@ export function App() {
   const [guide, setGuide] = useState(false)
   return (
     <>
-      {screen === 'start' ? <StartScreen onOpenGuide={() => setGuide(true)} /> : <Playing />}
+      {screen === 'start'
+        ? <StartScreen onOpenGuide={() => setGuide(true)} />
+        : <ErrorBoundary onReset={() => useGame.getState().exitToStart()}><Playing /></ErrorBoundary>}
       {screen === 'start' && guide && <Tutorial onClose={() => setGuide(false)} />}
       <Toasts />
     </>

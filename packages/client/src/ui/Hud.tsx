@@ -36,6 +36,7 @@ export function Hud({ nearHouse }: { nearHouse: boolean }) {
   const progress = useGame(s => s.actionProgress)
   const tool = useGame(s => s.selectedTool)
   const setPanel = useGame(s => s.setPanel)
+  const saveFailed = useGame(s => s.saveFailed)
   const { hour, minute } = clockTime(game.dayElapsedSec)
   const plot = target !== null ? game.plots[target - 1] : null
 
@@ -46,6 +47,7 @@ export function Hud({ nearHouse }: { nearHouse: boolean }) {
         Ngày {game.day} · {pad(hour)}:{pad(minute)}
         <button className="btn btn-help" onClick={() => setPanel('tutorial')} aria-label="Hướng dẫn">?</button>
       </div>
+      {saveFailed && <div className="save-warning">⚠ Không lưu được tiến trình – trình duyệt đang chặn bộ nhớ</div>}
       <div className="crosshair" />
       {plot && <PlotInfo plot={plot} />}
       {progress !== null && (

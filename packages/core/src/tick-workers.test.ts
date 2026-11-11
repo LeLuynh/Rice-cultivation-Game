@@ -93,6 +93,20 @@ describe('NPC của người chơi', () => {
     expect(r2.state.xu).toBe(85)
   })
 
+  it('người chơi tự làm việc bị chặn → cờ npcBlocked được xóa, lần chặn sau lại báo', () => {
+    const r = tick(npcSetup({}, 10), 25)
+    expect(plot(r.state, 13).npcBlocked).toBe('NOT_ENOUGH_XU')
+    const done = applyAction(r.state, { type: 'performTask', plotId: 13, task: 'plow', tool: 'hoe' })
+    if (!done.ok) throw new Error(done.error)
+    const r2 = tick(done.state, 1)
+    expect(plot(r2.state, 13).npcBlocked).toBeNull()
+    // gieo mạ cần 10 Xu, còn 10 Xu nhưng không có giống → chặn lý do khác; đặt Xu 0 để lại chặn NOT_ENOUGH_XU
+    const s3 = structuredClone(r2.state)
+    s3.xu = 0
+    const r3 = tick(s3, 20)
+    expect(r3.events).toContainEqual({ type: 'npcBlocked', plotId: 13, reason: 'NOT_ENOUGH_XU' })
+  })
+
   it('NPC tuốt lúa cộng vào kho người chơi', () => {
     const r = tick(npcSetup({ stage: 'bundled', health: 100 }), 20)
     expect(r.state.inventory.riceKg).toBe(100)

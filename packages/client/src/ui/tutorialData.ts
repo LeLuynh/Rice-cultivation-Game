@@ -10,6 +10,7 @@ const minutes = (sec: number): string => `${sec} giây`
 export function tutorialSections(): TutorialSection[] {
   const c = CONFIG
   const toolOf = (t: Task): string => TOOL_LABELS[c.tasks[t].tool].toLowerCase()
+  const faster = (level: 2 | 3): number => Math.round((1 - c.toolSpeedMultiplier[level]) * 100)
   return [
     { id: 'controls', title: 'Điều khiển', rows: CONTROLS.map(k => [k.keys, k.label]) },
     {
@@ -25,8 +26,8 @@ export function tutorialSections(): TutorialSection[] {
         ['Giống (1 bao cho 1 ô)', formatXu(c.seedPrice)],
         ['Phân (1 bao cho 1 ô)', formatXu(c.fertilizerPrice)],
         ['Địa chủ mua lúa (không thuế)', `${formatNumber(c.ricePricePerKg)} Xu/kg`],
-        ['Nâng công cụ lên cấp 2 (nhanh hơn 30%)', formatXu(c.toolUpgradeCost[2])],
-        ['Nâng công cụ lên cấp 3 (nhanh hơn 60%)', formatXu(c.toolUpgradeCost[3])],
+        [`Nâng công cụ lên cấp 2 (nhanh hơn ${faster(2)}%)`, formatXu(c.toolUpgradeCost[2])],
+        [`Nâng công cụ lên cấp 3 (nhanh hơn ${faster(3)}%)`, formatXu(c.toolUpgradeCost[3])],
         ['Thuê NPC', `Mở khi có ${c.npcUnlockPlotCount} ô; trả công theo bảng tiền công`],
       ],
     },
@@ -51,7 +52,7 @@ export function tutorialSections(): TutorialSection[] {
       id: 'roadmap',
       title: 'Lộ trình',
       rows: [
-        ['1. Làm thuê', 'Làm việc trên ruộng Địa chủ (ô 1–12), nhận công ngay. Để quá 60 giây người làm khác sẽ làm thay.'],
+        ['1. Làm thuê', `Làm việc trên ruộng Địa chủ (ô 1–12), nhận công ngay. Để quá ${c.landlordJobTimeoutSec} giây người làm khác sẽ làm thay.`],
         ['2. Mua đất', `Đủ ${formatXu(c.landPrice)} thì mua một ô 13–20 ở nhà Địa chủ, mua giống và phân để tự làm.`],
         ['3. Bán lúa', 'Tuốt xong, lúa vào kho. Bán cho Địa chủ, không mất thuế.'],
         ['4. Lên Địa chủ', `Có ${c.npcUnlockPlotCount} ô thì thuê NPC làm hộ, trả công theo từng việc.`],

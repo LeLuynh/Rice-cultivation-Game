@@ -12,7 +12,9 @@ const KEY_PANELS: Record<string, Exclude<Panel, null>> = {
 export function useHotkeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.target instanceof HTMLInputElement) return
+      if (e.repeat) return
+      const typing = e.target instanceof HTMLInputElement && (e.target.type === 'text' || e.target.type === 'number')
+      if (typing && e.code !== 'Escape') return
       const { panel, setPanel, nearHouse } = useGame.getState()
       let next: Panel | undefined
       if (e.code === 'Escape') next = panel === null ? 'pause' : null

@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useGame, saveStore } from '../game/store'
+import { browserStorage } from '../game/save'
 import { NAME_MAX, NAME_MIN, validatePlayerName } from '../game/name'
 import { CONTROLS, continueLabel } from './messages'
 
@@ -33,6 +34,7 @@ export function StartScreen({ onOpenGuide }: Props) {
         <h1 className="title">Làng Lúa</h1>
         <p className="subtitle">Cày cấy, làm thuê và trở thành Địa chủ</p>
 
+        {browserStorage() === null && <p className="warn">Trình duyệt đang chặn bộ nhớ – vẫn chơi được nhưng tiến trình sẽ không được lưu.</p>}
         {saved.status === 'corrupt' && <p className="warn">Không đọc được bản lưu cũ – hãy bắt đầu chơi mới.</p>}
 
         {saved.status === 'ok' && !askName ? (

@@ -44,6 +44,21 @@ describe('createSaveStore', () => {
     expect(createSaveStore(storage).load()).toEqual({ status: 'corrupt' })
   })
 
+  it.each([
+    ['inventory rỗng', (s: Record<string, any>) => { s.inventory = {} }],
+    ['toolLevels sai', (s: Record<string, any>) => { s.toolLevels.hoe = 'x' }],
+    ['dayStats thiếu', (s: Record<string, any>) => { delete s.dayStats.wagesEarned }],
+    ['ô thiếu stage', (s: Record<string, any>) => { delete s.plots[3].stage }],
+    ['ô stage lạ', (s: Record<string, any>) => { s.plots[3].stage = 'banana' }],
+    ['ô nước không phải số', (s: Record<string, any>) => { s.plots[0].water = null }],
+  ])('trường lồng nhau hỏng → corrupt: %s', (_name, breakIt) => {
+    const storage = memoryStorage()
+    const raw = JSON.parse(JSON.stringify(createNewGame('Tí', 3)))
+    breakIt(raw)
+    storage.data.set(SAVE_KEY, JSON.stringify(raw))
+    expect(createSaveStore(storage).load()).toEqual({ status: 'corrupt' })
+  })
+
   it('storage ném lỗi → save trả false, load none, không ném', () => {
     const store = createSaveStore(throwing)
     expect(store.save(createNewGame('Tí', 3))).toBe(false)
