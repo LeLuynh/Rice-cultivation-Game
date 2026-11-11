@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { PointerLockControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGame } from '../game/store'
-import { EYE_HEIGHT, HOUSE_DOOR, teleportPose } from '../game/layout'
+import { EYE_HEIGHT, HOUSE_DOOR, HOUSE_INTERACT_RADIUS, teleportPose } from '../game/layout'
 import { INTERACT_DISTANCE, actionDurationSec, moveWithCollision, taskForTool } from '../game/interaction'
 import { TOOL_ORDER } from '../ui/messages'
 
@@ -89,6 +89,8 @@ export function Player() {
       )
       camera.position.set(x, EYE_HEIGHT, z)
     }
+
+    store.setNearHouse(Math.hypot(camera.position.x - HOUSE_DOOR[0], camera.position.z - HOUSE_DOOR[1]) <= HOUSE_INTERACT_RADIUS)
 
     // nhắm ô ở tâm màn hình
     const grounds: THREE.Object3D[] = []

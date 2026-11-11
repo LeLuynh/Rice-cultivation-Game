@@ -15,6 +15,7 @@ export interface GameStore {
   teleportTarget: number | null
   targetPlotId: number | null
   actionProgress: number | null
+  nearHouse: boolean
   startNew(name: string): void
   continueGame(): void
   exitToStart(): void
@@ -26,6 +27,7 @@ export interface GameStore {
   clearTeleport(): void
   setTarget(id: number | null): void
   setActionProgress(p: number | null): void
+  setNearHouse(v: boolean): void
   pushToast(text: string, kind?: 'info' | 'error'): void
   saveNow(): boolean
 }
@@ -54,6 +56,7 @@ export const useGame = create<GameStore>((set, get) => {
     teleportTarget: null,
     targetPlotId: null,
     actionProgress: null,
+    nearHouse: false,
 
     startNew(name) {
       saveStore.clear()
@@ -109,6 +112,7 @@ export const useGame = create<GameStore>((set, get) => {
     clearTeleport() { set({ teleportTarget: null }) },
     setTarget(id) { if (get().targetPlotId !== id) set({ targetPlotId: id }) },
     setActionProgress(p) { if (get().actionProgress !== p) set({ actionProgress: p }) },
+    setNearHouse(v) { if (get().nearHouse !== v) set({ nearHouse: v }) },
 
     pushToast(text, kind = 'info') {
       const id = nextToastId++
