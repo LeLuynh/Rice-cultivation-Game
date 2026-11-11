@@ -30,7 +30,7 @@ function Dots({ spots, center, color, y, size }: {
 function SaleSign({ center }: { center: [number, number] }) {
   const [x, z] = center
   return (
-    <group position={[x, 0, z + PLOT_SIZE / 2 - 0.6]}>
+    <group position={[x, 0, z - PLOT_SIZE / 2 + 0.6]}>
       <mesh position={[0, 0.75, 0]} castShadow>
         <cylinderGeometry args={[0.06, 0.06, 1.5, 6]} />
         <meshStandardMaterial color="#6b4a2b" />

@@ -47,6 +47,18 @@ describe('layout', () => {
     }
   })
 
+  it('teleportPose nhìn xuống: tia nhắm chạm mặt ô trong tầm với', () => {
+    for (const id of ids) {
+      const { position: [x, y, z], yaw, pitch } = teleportPose(id)
+      expect(pitch).toBeLessThan(0)
+      // hướng nhìn camera (thứ tự Euler YXZ)
+      const dir = [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)]
+      const t = (y - 0.1) / -dir[1] // khoảng cách tới mặt ô (cao 0.1 m)
+      expect(t).toBeLessThan(6)
+      expect(plotIdAt(x + dir[0] * t, z + dir[2] * t)).toBe(id)
+    }
+  })
+
   it('teleportPose nhìn về tâm ô', () => {
     for (const id of ids) {
       const { position: [x, , z], yaw } = teleportPose(id)

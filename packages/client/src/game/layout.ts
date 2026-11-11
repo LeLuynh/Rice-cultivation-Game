@@ -36,8 +36,16 @@ export function plotIdAt(x: number, z: number): number | null {
   return Math.abs(x - cx) < half && Math.abs(z - cz) < half ? id : null
 }
 
-/** Chỗ đứng khi dịch chuyển tới ô: giữa bờ ruộng phía nam ô, nhìn về tâm ô (yaw 0 = nhìn về −z). */
-export function teleportPose(plotId: number): { position: [number, number, number]; yaw: number } {
+/** Khoảng cách ngang từ chỗ đứng tới điểm nhìn trên ô sau khi dịch chuyển. */
+const LOOK_AHEAD = 3
+const GROUND_TOP = 0.1
+
+/**
+ * Chỗ đứng khi dịch chuyển tới ô: giữa bờ ruộng phía nam ô, nhìn về tâm ô (yaw 0 = nhìn về −z),
+ * cúi xuống để tâm ngắm rơi vào mặt ô.
+ */
+export function teleportPose(plotId: number): { position: [number, number, number]; yaw: number; pitch: number } {
   const [cx, cz] = plotCenter(plotId)
-  return { position: [cx, EYE_HEIGHT, cz + PLOT_SIZE / 2 + BUND_WIDTH / 2], yaw: 0 }
+  const pitch = -Math.atan((EYE_HEIGHT - GROUND_TOP) / LOOK_AHEAD)
+  return { position: [cx, EYE_HEIGHT, cz + PLOT_SIZE / 2 + BUND_WIDTH / 2], yaw: 0, pitch }
 }

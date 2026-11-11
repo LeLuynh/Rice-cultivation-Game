@@ -23,7 +23,7 @@ export function Player() {
   // vị trí xuất phát: trước cửa nhà Địa chủ, nhìn ra cánh đồng
   useEffect(() => {
     camera.position.set(HOUSE_DOOR[0], EYE_HEIGHT, HOUSE_DOOR[1] + 3)
-    camera.rotation.set(0, Math.PI, 0, 'YXZ')
+    camera.rotation.set(-0.2, Math.PI, 0, 'YXZ')
   }, [camera])
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function Player() {
     if (store.teleportTarget !== null) {
       const pose = teleportPose(store.teleportTarget)
       camera.position.set(...pose.position)
-      camera.rotation.set(0, pose.yaw, 0, 'YXZ')
+      camera.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ')
       store.clearTeleport()
     }
 
