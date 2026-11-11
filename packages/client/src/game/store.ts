@@ -13,6 +13,8 @@ export interface GameStore {
   toasts: Toast[]
   selectedTool: ToolId
   teleportTarget: number | null
+  targetPlotId: number | null
+  actionProgress: number | null
   startNew(name: string): void
   continueGame(): void
   exitToStart(): void
@@ -21,6 +23,9 @@ export interface GameStore {
   setPanel(p: Panel): void
   selectTool(t: ToolId): void
   teleportTo(plotId: number): void
+  clearTeleport(): void
+  setTarget(id: number | null): void
+  setActionProgress(p: number | null): void
   pushToast(text: string, kind?: 'info' | 'error'): void
   saveNow(): boolean
 }
@@ -47,6 +52,8 @@ export const useGame = create<GameStore>((set, get) => {
     toasts: [],
     selectedTool: 'hoe',
     teleportTarget: null,
+    targetPlotId: null,
+    actionProgress: null,
 
     startNew(name) {
       saveStore.clear()
@@ -99,6 +106,9 @@ export const useGame = create<GameStore>((set, get) => {
 
     selectTool(t) { set({ selectedTool: t }) },
     teleportTo(plotId) { set({ teleportTarget: plotId }) },
+    clearTeleport() { set({ teleportTarget: null }) },
+    setTarget(id) { if (get().targetPlotId !== id) set({ targetPlotId: id }) },
+    setActionProgress(p) { if (get().actionProgress !== p) set({ actionProgress: p }) },
 
     pushToast(text, kind = 'info') {
       const id = nextToastId++

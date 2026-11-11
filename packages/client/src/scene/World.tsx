@@ -1,10 +1,11 @@
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import { clockTime } from '@rice/core'
 import { useGame } from '../game/store'
 import { lightingAt } from './lighting'
 import { Plot } from './Plot'
 import { Village } from './Village'
+import { Player } from './Player'
+import { HeldTool } from './HeldTool'
 
 function Scene() {
   const game = useGame(s => s.game)!
@@ -38,9 +39,10 @@ function Scene() {
 
 export function World() {
   return (
-    <Canvas shadows camera={{ position: [0, 30, 45], fov: 70 }}>
+    <Canvas shadows camera={{ fov: 70, near: 0.05, far: 300 }}>
       <Scene />
-      <OrbitControls />
+      <Player />
+      <HeldTool />
     </Canvas>
   )
 }
