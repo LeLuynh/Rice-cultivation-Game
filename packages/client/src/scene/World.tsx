@@ -6,6 +6,7 @@ import { Plot } from './Plot'
 import { Village } from './Village'
 import { Player } from './Player'
 import { HeldTool } from './HeldTool'
+import { Workers } from './Workers'
 
 function Scene() {
   const game = useGame(s => s.game)!
@@ -43,6 +44,7 @@ export function World() {
       <Scene />
       <Player />
       <HeldTool />
+      <Workers />
     </Canvas>
   )
 }

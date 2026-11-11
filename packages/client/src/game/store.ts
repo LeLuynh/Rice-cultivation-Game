@@ -5,6 +5,9 @@ import { ERROR_MESSAGES, describeEvent } from '../ui/messages'
 
 export type Panel = null | 'plots' | 'jobs' | 'inventory' | 'landlord' | 'tutorial' | 'pause' | 'daySummary'
 export interface Toast { id: number; text: string; kind: 'info' | 'error' }
+/** Một lượt NPC đi ra ô làm việc – chỉ để nhìn. */
+export interface WorkerVisit { id: number; plotId: number; startedAt: number }
+export const WORKER_VISIT_MS = 8000
 
 export interface GameStore {
   screen: 'start' | 'playing'
@@ -16,6 +19,7 @@ export interface GameStore {
   targetPlotId: number | null
   actionProgress: number | null
   nearHouse: boolean
+  workerVisits: WorkerVisit[]
   startNew(name: string): void
   continueGame(): void
   exitToStart(): void
@@ -35,6 +39,7 @@ export interface GameStore {
 export const saveStore = createSaveStore(browserStorage())
 const TOAST_MS = 4000
 let nextToastId = 1
+let nextVisitId = 1
 
 /** Panel bắt buộc khi đang có tổng kết ngày. */
 const panelFor = (game: GameState, wanted: Panel): Panel => (game.daySummary ? 'daySummary' : wanted)
@@ -57,6 +62,7 @@ export const useGame = create<GameStore>((set, get) => {
     targetPlotId: null,
     actionProgress: null,
     nearHouse: false,
+    workerVisits: [],
 
     startNew(name) {
       saveStore.clear()
@@ -94,7 +100,12 @@ export const useGame = create<GameStore>((set, get) => {
       const { game } = get()
       if (!game || game.daySummary) return
       const result = tick(game, dtSec)
-      set({ game: result.state })
+      const now = performance.now()
+      const visits = get().workerVisits.filter(v => now - v.startedAt < WORKER_VISIT_MS)
+      for (const e of result.events) {
+        if (e.type === 'landlordWorkerDid' || e.type === 'npcDid') visits.push({ id: nextVisitId++, plotId: e.plotId, startedAt: now })
+      }
+      set({ game: result.state, workerVisits: visits })
       toastEvents(result.events)
       if (result.events.some(e => e.type === 'dayEnded')) {
         set({ panel: 'daySummary' })
