@@ -6,14 +6,14 @@ export interface Lighting {
   windowGlow: number
 }
 
-// Các mốc giờ trong ngày (spec 7): sáng trời xanh, 17–19 giờ hoàng hôn, 19–22 giờ tối có trăng.
+// Các mốc giờ trong ngày (spec 7): sáng trời xanh, 17–19 giờ hoàng hôn, 19–22 giờ tối có trăng sáng (đủ để làm việc).
 const KEYS: { hour: number; l: Lighting }[] = [
   { hour: 6, l: { sky: '#f3b58a', sunIntensity: 0.7, sunColor: '#ffd2a1', ambient: 0.45, windowGlow: 0 } },
   { hour: 8, l: { sky: '#8fd0f0', sunIntensity: 1.3, sunColor: '#fff6e5', ambient: 0.6, windowGlow: 0 } },
   { hour: 17, l: { sky: '#8fd0f0', sunIntensity: 1.2, sunColor: '#fff1d6', ambient: 0.6, windowGlow: 0 } },
   { hour: 18, l: { sky: '#f08a4b', sunIntensity: 0.8, sunColor: '#ff9a50', ambient: 0.45, windowGlow: 0.3 } },
-  { hour: 19, l: { sky: '#2a3566', sunIntensity: 0.25, sunColor: '#9fb3ff', ambient: 0.25, windowGlow: 1 } },
-  { hour: 22, l: { sky: '#0c1430', sunIntensity: 0.2, sunColor: '#9fb3ff', ambient: 0.18, windowGlow: 1 } },
+  { hour: 19, l: { sky: '#2a3566', sunIntensity: 0.4, sunColor: '#a9bcff', ambient: 0.38, windowGlow: 1 } },
+  { hour: 22, l: { sky: '#16224a', sunIntensity: 0.35, sunColor: '#a9bcff', ambient: 0.32, windowGlow: 1 } },
 ]
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t

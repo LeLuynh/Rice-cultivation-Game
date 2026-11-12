@@ -15,8 +15,15 @@ export function clampPitch(pitch: number): number {
   return Math.min(MAX_PITCH, Math.max(-MAX_PITCH, pitch))
 }
 
+const MOON: Vec3 = (() => {
+  const v: Vec3 = [0.25, -0.92, 0.3]
+  const len = Math.hypot(...v)
+  return [v[0] / len, v[1] / len, v[2] / len]
+})()
+
 /** Hướng tia nắng (từ mặt trời xuống đất): mọc ở đông (x+) lúc 6 giờ, lặn ở tây lúc 18 giờ; tối là trăng trên cao. */
 export function sunDirection(hour: number): Vec3 {
+  if (hour > 18.5) return MOON
   const angle = ((Math.min(Math.max(hour, 6), 18) - 6) / 12) * Math.PI
   const pos: Vec3 = [Math.cos(angle), Math.max(0.15, Math.sin(angle)), 0.35]
   const len = Math.hypot(...pos)

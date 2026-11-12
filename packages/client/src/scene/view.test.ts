@@ -31,6 +31,9 @@ describe('sunDirection', () => {
     expect(sunDirection(8)[0]).toBeLessThan(0)
     expect(sunDirection(16)[0]).toBeGreaterThan(0)
   })
+  it('đêm: ánh trăng chiếu từ trên cao để ruộng không tối đen', () => {
+    expect(sunDirection(21)[1]).toBeLessThan(-0.8)
+  })
   it('vector đơn vị', () => {
     const [x, y, z] = sunDirection(10)
     expect(Math.hypot(x, y, z)).toBeCloseTo(1)

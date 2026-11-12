@@ -15,6 +15,7 @@ import { PlotViews } from './plots'
 import { PlayerController } from './player'
 import { HeldTool } from './heldTool'
 import { Workers } from './workers'
+import { Lamps } from './lamps'
 import { createPerson, personMeshes } from './person'
 import { sunDirection } from './view'
 
@@ -112,6 +113,15 @@ export class GameScene {
     const held = new HeldTool(scene, m, camera)
     const workers = new Workers(scene, m, shadows)
 
+    const lamps = new Lamps(scene, m, camera, high)
+    // mặc định Babylon chỉ tính 4 đèn mỗi vật liệu; ban đêm cần trời, trăng, đèn cầm tay và 4 cột đèn (tổng 7)
+    const maxLights = high ? 7 : 3
+    const raiseLights = (mt: unknown): void => {
+      if (mt && typeof mt === 'object' && 'maxSimultaneousLights' in mt) (mt as { maxSimultaneousLights: number }).maxSimultaneousLights = maxLights
+    }
+    scene.materials.forEach(raiseLights)
+    scene.onNewMaterialAddedObservable.add(raiseLights)
+
     const pipeline = new DefaultRenderingPipeline('post', true, scene, [camera])
     pipeline.samples = high ? 4 : 1
     pipeline.fxaaEnabled = true
@@ -160,6 +170,7 @@ export class GameScene {
         scene.fogColor = fog
         scene.clearColor = Color4.FromColor3(fog)
         m.window.emissiveColor = WINDOW_GLOW.scale(light.windowGlow * 1.6)
+        lamps.setGlow(light.windowGlow)
       }
 
       held.select(state.selectedTool)
