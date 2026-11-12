@@ -162,3 +162,10 @@ export const useGame = create<GameStore>((set, get) => {
     },
   }
 })
+
+// Mọi bảng (kể cả tự mở như tổng kết ngày) đều cần con trỏ chuột để bấm: mở bảng là nhả khóa chuột.
+useGame.subscribe((s, prev) => {
+  if (s.panel !== null && prev.panel === null && typeof document !== 'undefined' && document.pointerLockElement) {
+    document.exitPointerLock()
+  }
+})

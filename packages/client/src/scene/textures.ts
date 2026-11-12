@@ -163,6 +163,8 @@ export function frondTexture(scene: Scene): DynamicTexture {
 export function signTexture(scene: Scene, lines: string[]): DynamicTexture {
   const tex = canvasTexture(scene, 'sign', 256, (ctx, size) => {
     pixels(ctx, size, (u, v) => mix([170, 128, 78], [214, 172, 112], tileNoise(u * 0.2, v, 16, 41, 3)))
+    // UV của mặt phẳng (hệ tay phải) lật ngang so với canvas: vẽ chữ lật gương để lên biển đọc xuôi
+    ctx.setTransform(-1, 0, 0, 1, size, 0)
     ctx.fillStyle = '#8f1d14'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -173,8 +175,6 @@ export function signTexture(scene: Scene, lines: string[]): DynamicTexture {
   })
   tex.wrapU = Texture.CLAMP_ADDRESSMODE
   tex.wrapV = Texture.CLAMP_ADDRESSMODE
-  // chữ phải đọc xuôi: mặt hộp lấy UV ngược chiều dọc so với canvas nên không lật Y
-  tex.update(false)
   return tex
 }
 

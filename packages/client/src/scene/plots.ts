@@ -84,11 +84,19 @@ class PlotView {
       post.material = this.m.darkWood
       const board = MeshBuilder.CreateBox(`signBoard${this.id}`, { width: 1.3, height: 0.8, depth: 0.06 }, this.scene)
       board.position.y = 1.5
+      board.material = this.m.wood
+      // chữ dán hai mặt: mặt sau là bản xoay 180° của mặt trước nên nhìn phía nào cũng đọc xuôi
       const mat = new StandardMaterial(`signMat${this.id}`, this.scene)
       mat.diffuseTexture = signTexture(this.scene, ['BÁN', `${CONFIG.landPrice} Xu`])
       mat.specularColor = Color3.Black()
-      board.material = mat
-      for (const mesh of [post, board]) {
+      const front = MeshBuilder.CreatePlane(`signFront${this.id}`, { width: 1.26, height: 0.76 }, this.scene)
+      front.position.set(0, 1.5, 0.032)
+      front.rotation.y = Math.PI
+      front.material = mat
+      const back = front.clone(`signBack${this.id}`)
+      back.position.z = -0.032
+      back.rotation.y = 0
+      for (const mesh of [post, board, front, back]) {
         mesh.parent = this.sign
         mesh.isPickable = false
       }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useGame } from './store'
 
 // Chạy trong Node: không có window.localStorage → mọi lần lưu đều thất bại.
@@ -30,5 +30,19 @@ describe('store', () => {
     expect(s.workerVisits).toEqual([])
     expect(s.targetPlotId).toBeNull()
     expect(s.actionProgress).toBeNull()
+  })
+
+  it('hết ngày tự mở bảng tổng kết → nhả khóa chuột để bấm được nút', () => {
+    const exitPointerLock = vi.fn()
+    vi.stubGlobal('document', { pointerLockElement: {}, exitPointerLock })
+    try {
+      useGame.getState().startNew('Tí')
+      useGame.getState().dispatch({ type: 'markTutorialSeen' })
+      useGame.getState().advance(400)
+      expect(useGame.getState().panel).toBe('daySummary')
+      expect(exitPointerLock).toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
