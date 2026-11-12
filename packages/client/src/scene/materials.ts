@@ -74,7 +74,7 @@ export function createMaterials(scene: Scene): Materials {
   const windowMat = mat(scene, 'window', { color: '#2e2a22' })
   windowMat.emissiveColor = Color3.FromHexString('#ffc864')
 
-  const metal = mat(scene, 'metal', { color: '#8d939a', specular: 0.45 })
+  const metal = mat(scene, 'metal', { color: '#5f646a', specular: 0.2 })
   metal.specularPower = 64
 
   return {

@@ -100,7 +100,7 @@ export class GameScene {
       sun.orthoBottom = -70
     }
 
-    const perSide = high ? 10 : 6
+    const perSide = high ? 13 : 9
     const plots = new PlotViews(scene, m, CONFIG.plotCount, perSide)
     const rice = new RiceLayer(scene, true)
     const { water } = createFieldWater(scene, high)

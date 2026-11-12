@@ -87,19 +87,22 @@ export function createFieldWater(scene: Scene, high: boolean): { mesh: Mesh; wat
     water.bumpTexture = bump
     water.windForce = -1.5
     water.waveHeight = 0
-    water.bumpHeight = 0.06
+    water.bumpHeight = 0.04
     water.waveLength = 0.08
     water.windDirection = new Vector2(1, 0.6)
-    water.waterColor = new Color3(0.32, 0.36, 0.24)
-    water.colorBlendFactor = 0.22
+    // nước ruộng đục màu bùn, phản chiếu dịu: bớt bóng nắng chói (bloom làm chói thêm)
+    water.waterColor = new Color3(0.52, 0.5, 0.36)
+    water.colorBlendFactor = 0.55
+    water.specularColor = new Color3(0.12, 0.12, 0.1)
+    water.specularPower = 32
     water.alpha = 0.92
     mesh.material = water
     return { mesh, water }
   }
   const simple = new StandardMaterial('paddyWaterLow', scene)
-  simple.diffuseColor = new Color3(0.42, 0.52, 0.5)
-  simple.specularColor = new Color3(0.6, 0.6, 0.6)
-  simple.specularPower = 80
+  simple.diffuseColor = new Color3(0.34, 0.38, 0.3)
+  simple.specularColor = new Color3(0.15, 0.15, 0.13)
+  simple.specularPower = 32
   simple.bumpTexture = bump
   simple.bumpTexture.level = 0.3
   simple.alpha = 0.6
@@ -115,8 +118,8 @@ export function createCanal(scene: Scene, m: Materials): Mesh[] {
   water.position.set(CANAL.x, 0.04, zMid)
   const mat = new StandardMaterial('canalMat', scene)
   mat.diffuseColor = new Color3(0.22, 0.38, 0.4)
-  mat.specularColor = new Color3(0.8, 0.8, 0.8)
-  mat.specularPower = 96
+  mat.specularColor = new Color3(0.25, 0.25, 0.25)
+  mat.specularPower = 48
   mat.bumpTexture = waterNormalTexture(scene)
   mat.bumpTexture.level = 0.4
   ;(mat.bumpTexture as unknown as { uScale: number; vScale: number }).vScale = 8
