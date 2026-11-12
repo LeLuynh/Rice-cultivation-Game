@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { applyAction, createNewGame, tick, type Action, type GameEvent, type GameState, type ToolId } from '@rice/core'
 import { browserStorage, createSaveStore } from './save'
+import { loadQuality, saveQuality, type Quality } from './quality'
+
+export type { Quality }
 import { ERROR_MESSAGES, describeEvent } from '../ui/messages'
 
 export type Panel = null | 'plots' | 'jobs' | 'inventory' | 'landlord' | 'tutorial' | 'pause' | 'daySummary'
@@ -22,6 +25,9 @@ export interface GameStore {
   workerVisits: WorkerVisit[]
   /** Lần lưu gần nhất thất bại (trình duyệt chặn bộ nhớ hoặc đầy). */
   saveFailed: boolean
+  /** Chất lượng đồ họa (spec 11). */
+  quality: Quality
+  setQuality(q: Quality): void
   startNew(name: string): void
   continueGame(): void
   exitToStart(): void
@@ -75,6 +81,8 @@ export const useGame = create<GameStore>((set, get) => {
     actionProgress: null,
     nearHouse: false,
     workerVisits: [],
+    quality: loadQuality(browserStorage()),
+    setQuality(q) { saveQuality(browserStorage(), q); set({ quality: q }) },
     saveFailed: false,
 
     startNew(name) {
@@ -152,5 +160,12 @@ export const useGame = create<GameStore>((set, get) => {
       const { game } = get()
       return game ? persist(game) : false
     },
+  }
+})
+
+// Mọi bảng (kể cả tự mở như tổng kết ngày) đều cần con trỏ chuột để bấm: mở bảng là nhả khóa chuột.
+useGame.subscribe((s, prev) => {
+  if (s.panel !== null && prev.panel === null && typeof document !== 'undefined' && document.pointerLockElement) {
+    document.exitPointerLock()
   }
 })

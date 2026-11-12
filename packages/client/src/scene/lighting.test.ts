@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { lightingAt } from './lighting'
 
 describe('lightingAt', () => {
+  it('đêm vẫn đủ sáng để làm việc (trăng + trời)', () => {
+    expect(lightingAt(21).ambient).toBeGreaterThanOrEqual(0.3)
+    expect(lightingAt(21).sunIntensity).toBeGreaterThanOrEqual(0.3)
+  })
+
   it('trưa sáng hơn tối', () => {
     expect(lightingAt(12).sunIntensity).toBeGreaterThan(lightingAt(21).sunIntensity)
     expect(lightingAt(12).ambient).toBeGreaterThan(lightingAt(21).ambient)

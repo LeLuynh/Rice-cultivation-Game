@@ -3,7 +3,7 @@ import { useGame } from './game/store'
 import { useGameLoop } from './game/loop'
 import { StartScreen } from './ui/StartScreen'
 import { Toasts } from './ui/Toasts'
-import { World } from './scene/World'
+import { BabylonView } from './scene/BabylonView'
 import { Hud } from './ui/Hud'
 import { Tutorial } from './ui/Tutorial'
 import { Inventory, JobBoard, PlotBoard } from './ui/Boards'
@@ -53,7 +53,7 @@ function Playing() {
 
   return (
     <>
-      <World />
+      <BabylonView />
       <Hud nearHouse={nearHouse && panel === null} />
       {panel === null && !locked && <div className="click-hint">Bấm vào khung game để điều khiển</div>}
       <Panels />

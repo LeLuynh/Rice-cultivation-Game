@@ -8,7 +8,7 @@ const KEY_PANELS: Record<string, Exclude<Panel, null>> = {
   KeyH: 'tutorial',
 }
 
-/** Phím tắt mở/đóng bảng (spec 6.3). Mở bảng thì nhả khóa chuột. */
+/** Phím tắt mở/đóng bảng (spec 6.3). Store tự nhả khóa chuột khi bảng mở. */
 export function useHotkeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -25,7 +25,6 @@ export function useHotkeys(): void {
       if (next === undefined) return
       e.preventDefault()
       setPanel(next)
-      if (useGame.getState().panel !== null && document.pointerLockElement) document.exitPointerLock()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

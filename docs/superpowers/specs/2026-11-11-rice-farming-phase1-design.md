@@ -278,3 +278,18 @@ Không có chọn ngôn ngữ và âm lượng ở Giai đoạn 1.
 
 ## 11. Không làm ở Giai đoạn 1
 Nhiều người chơi, server, tài khoản, điện thoại, âm thanh và âm lượng, đa ngôn ngữ, thời tiết, giá lúa dao động, giao dịch giữa người chơi.
+
+## 11. Đồ họa Babylon.js (cập nhật 2026-11-12)
+
+Thay three.js / React Three Fiber bằng Babylon.js 9.35 (`@babylonjs/core`, `materials`, `procedural-textures`) để hình gần thực tế hơn. `@rice/core`, lưu game và giao diện React giữ nguyên; HUD/bảng vẫn là React đè lên canvas.
+
+- **Kiến trúc:** lớp `GameScene` dựng bằng code mệnh lệnh, gắn vào một canvas; mỗi khung hình đọc store zustand. Hệ tọa độ tay phải (giữ nguyên toán bố cục: yaw 0 nhìn về −z). Tự quản lý khóa chuột, xoay nhìn, WASD.
+- **Trời & nắng:** SkyMaterial theo giờ, mặt trời đổ bóng, sương xa; hậu kỳ: tone mapping ACES, bloom nhẹ, FXAA.
+- **Ruộng:** bùn texture sinh bằng code; mặt nước WaterMaterial phản chiếu trời và lúa.
+- **Lúa:** cụm lá dài, bông rủ khi chín, đung đưa theo gió bằng shader; thin instances.
+- **Cảnh quan:** núi xa, dừa, tre, nhà gạch mái ngói, bờ ruộng cỏ, kênh nước.
+- **Người:** dựng bằng code, nón lá, animation đi bộ / cúi làm (không tải model ngoài).
+- **Tay & dụng cụ:** tay cầm liềm/cuốc/gáo/rổ/bao phân; động tác vung mượt khi giữ chuột.
+- **HUD:** khung gỗ; ô Xu (đồng vàng), ô Kho lúa; nút "Bán cho Địa chủ" chỉ bấm được khi đứng gần nhà Địa chủ (mở tab Bán lúa).
+- **Chất lượng:** Cao / Thấp trong menu Tạm dừng (lưu localStorage `rice-quality`); Thấp tắt phản chiếu nước, bóng đổ, bloom và giảm mật độ lúa.
+- **Tài nguyên:** không tải texture/model ngoài (sandbox chặn mạng) — texture sinh bằng `@babylonjs/procedural-textures` và canvas.

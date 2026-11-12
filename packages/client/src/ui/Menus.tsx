@@ -26,6 +26,16 @@ export function DaySummary() {
 }
 
 /** Menu tạm dừng (Esc). */
+function QualityToggle() {
+  const quality = useGame(s => s.quality)
+  const setQuality = useGame(s => s.setQuality)
+  return (
+    <button className="btn" onClick={() => setQuality(quality === 'high' ? 'low' : 'high')}>
+      Đồ họa: {quality === 'high' ? 'Cao' : 'Thấp'} (bấm để đổi)
+    </button>
+  )
+}
+
 export function PauseMenu() {
   const { setPanel, saveNow, pushToast, exitToStart } = useGame.getState()
   return (
@@ -37,6 +47,7 @@ export function PauseMenu() {
           const ok = saveNow()
           pushToast(ok ? 'Đã lưu' : 'Không lưu được – trình duyệt chặn bộ nhớ', ok ? 'info' : 'error')
         }}>Lưu</button>
+        <QualityToggle />
         <button className="btn" onClick={exitToStart}>Về màn hình đầu</button>
       </div>
     </Modal>
