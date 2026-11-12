@@ -83,7 +83,7 @@ export function createFieldWater(scene: Scene, high: boolean): { mesh: Mesh; wat
   mesh.isPickable = false
   const bump = waterNormalTexture(scene)
   if (high) {
-    const water = new WaterMaterial('paddyWater', scene, new Vector2(512, 512))
+    const water = new WaterMaterial('paddyWater', scene, new Vector2(256, 256))
     water.bumpTexture = bump
     water.windForce = -1.5
     water.waveHeight = 0

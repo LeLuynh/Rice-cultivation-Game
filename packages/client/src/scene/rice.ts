@@ -18,12 +18,12 @@ interface LookSpec {
 }
 
 const LOOKS: Record<Exclude<Look, 'bundled'>, LookSpec> = {
-  seedling: { blades: 6, lean: 0.25, width: 0.018, base: '#5f9a3a', tip: '#b8e07a' },
-  young: { blades: 10, lean: 0.3, width: 0.016, base: '#3f7f2c', tip: '#8fcf5a' },
-  green: { blades: 14, lean: 0.35, width: 0.014, base: '#2c6a24', tip: '#6fbf44' },
-  flowering: { blades: 14, lean: 0.38, width: 0.014, base: '#3a7028', tip: '#8cbf4a', panicles: { count: 5, droop: 0.3, color: '#c8cf82' } },
-  ripe: { blades: 14, lean: 0.42, width: 0.014, base: '#5f7a2c', tip: '#c2b450', panicles: { count: 7, droop: 0.75, color: '#e0ad3a' } },
-  weed: { blades: 10, lean: 0.6, width: 0.03, base: '#24501c', tip: '#4f8a2c' },
+  seedling: { blades: 5, lean: 0.25, width: 0.018, base: '#5f9a3a', tip: '#b8e07a' },
+  young: { blades: 7, lean: 0.3, width: 0.016, base: '#3f7f2c', tip: '#8fcf5a' },
+  green: { blades: 9, lean: 0.35, width: 0.014, base: '#2c6a24', tip: '#6fbf44' },
+  flowering: { blades: 9, lean: 0.38, width: 0.014, base: '#3a7028', tip: '#8cbf4a', panicles: { count: 4, droop: 0.3, color: '#c8cf82' } },
+  ripe: { blades: 9, lean: 0.42, width: 0.014, base: '#5f7a2c', tip: '#c2b450', panicles: { count: 4, droop: 0.75, color: '#e0ad3a' } },
+  weed: { blades: 7, lean: 0.6, width: 0.03, base: '#24501c', tip: '#4f8a2c' },
 }
 
 export function lookFor(stage: Stage): Look | null {
@@ -67,7 +67,7 @@ function buildClump(scene: Scene, name: string, spec: LookSpec): Mesh {
     const side = new Vector3(-Math.sin(a), 0, Math.cos(a))
     const left: Vector3[] = []
     const right: Vector3[] = []
-    const SEG = 6
+    const SEG = 4
     for (let s = 0; s <= SEG; s++) {
       const t = s / SEG
       const center = dir.scale(lean * t * t + 0.02).add(new Vector3(0, h * t * (1 - 0.25 * lean * t), 0))
@@ -85,8 +85,8 @@ function buildClump(scene: Scene, name: string, spec: LookSpec): Mesh {
       const a = (k / spec.panicles.count) * Math.PI * 2 + 0.4
       const dir = new Vector3(Math.cos(a), 0, Math.sin(a))
       const path: Vector3[] = []
-      for (let s = 0; s <= 8; s++) {
-        const t = s / 8
+      for (let s = 0; s <= 5; s++) {
+        const t = s / 5
         const out = 0.05 + t * 0.22
         const y = 0.95 + 0.12 * t - spec.panicles.droop * t * t * 0.5
         path.push(dir.scale(out).add(new Vector3(0, y, 0)))
@@ -95,7 +95,7 @@ function buildClump(scene: Scene, name: string, spec: LookSpec): Mesh {
       const tube = MeshBuilder.CreateTube(`${name}-p${k}`, { path, tessellation: 4, radius: 0.006 }, scene)
       paint(tube, () => Color4.FromColor3(grain))
       parts.push(tube)
-      for (let br = 2; br <= 7; br += 1) {
+      for (let br = 2; br <= 4; br += 1) {
         const from = path[br]
         const side = new Vector3(-dir.z, 0, dir.x).scale(br % 2 === 0 ? 1 : -1)
         const to = from.add(side.scale(0.05)).add(dir.scale(0.03)).add(new Vector3(0, -0.06 - spec.panicles.droop * 0.06, 0))
@@ -154,8 +154,6 @@ export class RiceLayer {
   private meshes = new Map<Look, Mesh>()
   private material: CustomMaterial
   private time = 0
-  /** Gọi khi một mesh cây mới được tạo (để thêm vào danh sách phản chiếu nước, bóng…). */
-  onMeshCreated: (m: Mesh) => void = () => {}
 
   constructor(private scene: Scene, private receiveShadows: boolean) {
     this.material = windMaterial(scene, 'riceWind')
@@ -171,7 +169,6 @@ export class RiceLayer {
       m.receiveShadows = this.receiveShadows
       m.alwaysSelectAsActiveMesh = true
       this.meshes.set(look, m)
-      this.onMeshCreated(m)
     }
     return m
   }

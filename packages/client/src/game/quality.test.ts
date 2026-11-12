@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { QUALITY_KEY, loadQuality, saveQuality } from './quality'
+import { QUALITY_KEY, loadQuality, saveQuality, shouldDowngrade } from './quality'
 
 const memory = (): Storage => {
   const data = new Map<string, string>()
@@ -33,5 +33,23 @@ describe('quality', () => {
     const broken = { getItem: () => { throw new Error('x') }, setItem: () => { throw new Error('x') } } as unknown as Storage
     expect(loadQuality(broken)).toBe('high')
     expect(() => saveQuality(broken, 'low')).not.toThrow()
+  })
+})
+
+describe('shouldDowngrade', () => {
+  it('Cao mà fps trung vị dưới 30 → hạ xuống Thấp', () => {
+    expect(shouldDowngrade('high', [22, 25, 24, 28, 26])).toBe(true)
+  })
+  it('đủ mượt thì giữ nguyên', () => {
+    expect(shouldDowngrade('high', [55, 58, 60, 52, 57])).toBe(false)
+  })
+  it('một lần khựng (tải texture) không tính', () => {
+    expect(shouldDowngrade('high', [8, 50, 55, 58, 60])).toBe(false)
+  })
+  it('chưa đủ 5 mẫu thì chưa quyết', () => {
+    expect(shouldDowngrade('high', [10, 10])).toBe(false)
+  })
+  it('đã là Thấp thì không hạ nữa', () => {
+    expect(shouldDowngrade('low', [10, 10, 10, 10, 10])).toBe(false)
   })
 })

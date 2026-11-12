@@ -5,6 +5,7 @@ import {
 import { SkyMaterial } from '@babylonjs/materials'
 import { CONFIG, clockTime } from '@rice/core'
 import { useGame, type Quality } from '../game/store'
+import { shouldDowngrade } from '../game/quality'
 import { HOUSE_DOOR } from '../game/layout'
 import { lightingAt } from './lighting'
 import { createMaterials } from './materials'
@@ -37,7 +38,8 @@ export class GameScene {
   constructor(canvas: HTMLCanvasElement, quality: Quality) {
     const high = quality === 'high'
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, antialias: true }, true)
-    this.engine.setHardwareScalingLevel(high ? 1 / Math.min(window.devicePixelRatio || 1, 1.5) : 1)
+    // vẽ theo độ phân giải CSS (không nhân devicePixelRatio); Thấp vẽ nhỏ hơn rồi phóng lên
+    this.engine.setHardwareScalingLevel(high ? 1 : 1.35)
     const scene = new Scene(this.engine)
     this.scene = scene
     scene.useRightHandedSystem = true
@@ -85,7 +87,7 @@ export class GameScene {
     if (high) {
       shadows = new ShadowGenerator(2048, sun)
       shadows.usePercentageCloserFiltering = true
-      shadows.filteringQuality = ShadowGenerator.QUALITY_MEDIUM
+      shadows.filteringQuality = ShadowGenerator.QUALITY_LOW
       shadows.bias = 0.002
       shadows.normalBias = 0.02
       for (const c of casters) shadows.addShadowCaster(c)
@@ -98,7 +100,7 @@ export class GameScene {
       sun.orthoBottom = -70
     }
 
-    const perSide = high ? 12 : 8
+    const perSide = high ? 10 : 6
     const plots = new PlotViews(scene, m, CONFIG.plotCount, perSide)
     const rice = new RiceLayer(scene, true)
     const { water } = createFieldWater(scene, high)
@@ -107,7 +109,7 @@ export class GameScene {
       for (const r of reflected) water.addToRenderList(r)
       for (const g of plots.grounds) water.addToRenderList(g)
     }
-    rice.onMeshCreated = mesh => { if (water) water.addToRenderList(mesh) }
+    // lúa không đưa vào phản chiếu nước: tốn gấp đôi số tam giác mà gần như không thấy trong nước đục
 
     const player = new PlayerController(scene, camera, canvas)
     const held = new HeldTool(scene, m, camera)
@@ -123,7 +125,7 @@ export class GameScene {
     scene.onNewMaterialAddedObservable.add(raiseLights)
 
     const pipeline = new DefaultRenderingPipeline('post', true, scene, [camera])
-    pipeline.samples = high ? 4 : 1
+    pipeline.samples = 1
     pipeline.fxaaEnabled = true
     pipeline.imageProcessingEnabled = true
     pipeline.imageProcessing.toneMappingEnabled = true
@@ -135,9 +137,15 @@ export class GameScene {
     pipeline.bloomEnabled = high
     pipeline.bloomThreshold = 0.85
     pipeline.bloomWeight = 0.25
-    pipeline.bloomKernel = 48
+    pipeline.bloomKernel = 32
+    pipeline.bloomScale = 0.5
 
     let elapsed = 0
+    // đo fps mỗi giây sau 5 giây khởi động; máy không kịp mức Cao thì tự chuyển Thấp
+    const fpsSamples: number[] = []
+    let nextSample = 5
+    // ?debug (công cụ đo, trình duyệt headless chạy CPU) không tự hạ để còn đo được mức Cao
+    const autoDowngrade = high && !new URLSearchParams(location.search).has('debug')
     let lastHour = -1
     scene.onBeforeRenderObservable.add(() => {
       const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.1)
@@ -145,6 +153,15 @@ export class GameScene {
       const state = useGame.getState()
       const game = state.game
       if (!game) return
+      if (autoDowngrade && elapsed >= nextSample && !document.hidden) {
+        nextSample = elapsed + 1
+        fpsSamples.push(this.engine.getFps())
+        if (shouldDowngrade(state.quality, fpsSamples)) {
+          state.pushToast('Máy chạy chưa mượt – đã chuyển Đồ họa sang Thấp (đổi lại trong menu Esc)')
+          state.setQuality('low')
+          return
+        }
+      }
 
       const byLook = plots.sync(game.plots)
       if (byLook) rice.set(byLook)
@@ -180,6 +197,8 @@ export class GameScene {
       workers.update(state.workerVisits, performance.now())
     })
 
+    // ?debug: cho công cụ đo hiệu năng đọc số tam giác / draw call
+    if (new URLSearchParams(location.search).has('debug')) (window as unknown as { __scene: Scene }).__scene = scene
     this.engine.runRenderLoop(() => scene.render())
     const onResize = (): void => this.engine.resize()
     window.addEventListener('resize', onResize)
