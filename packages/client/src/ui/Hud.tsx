@@ -1,7 +1,7 @@
 import { CONFIG, availableTasks, clockTime, type PlotState, type ToolId, type ToolLevel } from '@rice/core'
 import { useGame } from '../game/store'
 import { taskForTool } from '../game/interaction'
-import { STAGE_LABELS, TASK_LABELS, TOOL_LABELS, TOOL_ORDER, formatXu } from './messages'
+import { STAGE_LABELS, TASK_LABELS, TOOL_LABELS, TOOL_ORDER, formatNumber, formatXu } from './messages'
 
 const OWNER_LABEL: Record<PlotState['owner'], string> = { landlord: 'Địa chủ', player: 'Của bạn', forSale: 'Đang bán' }
 const pad = (n: number): string => String(n).padStart(2, '0')
@@ -16,7 +16,7 @@ function PlotInfo({ plot }: { plot: PlotState }) {
   const tasks = availableTasks(plot)
   const needsWater = CONFIG.water.drainingStages.includes(plot.stage)
   return (
-    <div className="plot-info">
+    <div className="plot-info wood">
       <strong>Ô {plot.id}</strong> · {OWNER_LABEL[plot.owner]} · {STAGE_LABELS[plot.stage]}
       {needsWater && <> · Nước {plot.water}%</>}
       {plot.owner !== 'forSale' && <> · Sức khỏe {plot.health}</>}
@@ -43,8 +43,16 @@ export function Hud({ nearHouse }: { nearHouse: boolean }) {
 
   return (
     <div className="hud">
-      <div className="hud-tl">{game.playerName} · <b>{formatXu(game.xu)}</b></div>
-      <div className="hud-tr">
+      <div className="hud-tl wood">
+        <div className="wallet-name">{game.playerName}</div>
+        <div className="wallet-label">Tiền</div>
+        <div className="wallet-row"><span className="coin" aria-hidden="true" /><b>{formatXu(game.xu)}</b></div>
+        <div className="wallet-label">Kho lúa</div>
+        <div className="wallet-row"><span className="rice-icon" aria-hidden="true">🌾</span><b>{formatNumber(game.inventory.riceKg)} kg</b></div>
+        <button className="btn btn-wood" disabled={!nearHouse} onClick={() => setPanel('landlord')}
+          title={nearHouse ? undefined : 'Đến trước cửa nhà Địa chủ để bán'}>Bán cho Địa chủ</button>
+      </div>
+      <div className="hud-tr wood">
         Ngày {game.day} · {pad(hour)}:{pad(minute)}
         <button className="btn btn-help" onClick={() => setPanel('tutorial')} aria-label="Hướng dẫn">?</button>
       </div>
@@ -54,7 +62,7 @@ export function Hud({ nearHouse }: { nearHouse: boolean }) {
       {progress !== null && (
         <div className="progress"><div className="progress-bar" style={{ width: `${progress * 100}%` }} /></div>
       )}
-      {nearHouse && <div className="hint">Nhấn <kbd>E</kbd> để vào nhà Địa chủ</div>}
+      {nearHouse && <div className="hint wood">Nhấn <kbd>E</kbd> để vào nhà Địa chủ</div>}
       <div className="hotbar">
         {TOOL_ORDER.map((t, i) => (
           <div key={t} className={`slot${t === tool ? ' slot-active' : ''}${plot && taskForTool(plot, t) ? ' slot-usable' : ''}`}>

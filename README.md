@@ -20,7 +20,7 @@ npm run build    # bản đóng gói ở packages/client/dist
 ## Cấu trúc
 
 - `packages/core` – toàn bộ luật chơi (TypeScript thuần, không phụ thuộc trình duyệt). Mọi con số nằm ở `packages/core/src/config.ts`.
-- `packages/client` – Vite + React + react-three-fiber: cảnh 3D, HUD, các bảng, lưu/tải.
+- `packages/client` – Vite + React + Babylon.js 9: cảnh 3D (trời theo giờ, nước phản chiếu, lúa có gió, bóng đổ), HUD, các bảng, lưu/tải. Thêm `?debug` vào URL để mở store cho công cụ chụp màn hình.
 - `docs/superpowers/specs` – bản thiết kế; `docs/superpowers/plans` – kế hoạch triển khai.
 
 ## Đăng lên GitHub Pages
