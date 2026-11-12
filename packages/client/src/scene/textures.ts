@@ -173,6 +173,8 @@ export function signTexture(scene: Scene, lines: string[]): DynamicTexture {
   })
   tex.wrapU = Texture.CLAMP_ADDRESSMODE
   tex.wrapV = Texture.CLAMP_ADDRESSMODE
+  // chữ phải đọc xuôi: mặt hộp lấy UV ngược chiều dọc so với canvas nên không lật Y
+  tex.update(false)
   return tex
 }
 
