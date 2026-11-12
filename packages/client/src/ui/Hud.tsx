@@ -1,5 +1,6 @@
 import { CONFIG, availableTasks, clockTime, type PlotState, type ToolId, type ToolLevel } from '@rice/core'
 import { useGame } from '../game/store'
+import { taskForTool } from '../game/interaction'
 import { STAGE_LABELS, TASK_LABELS, TOOL_LABELS, TOOL_ORDER, formatXu } from './messages'
 
 const OWNER_LABEL: Record<PlotState['owner'], string> = { landlord: 'Địa chủ', player: 'Của bạn', forSale: 'Đang bán' }
@@ -21,7 +22,7 @@ function PlotInfo({ plot }: { plot: PlotState }) {
       {plot.owner !== 'forSale' && <> · Sức khỏe {plot.health}</>}
       {tasks.length > 0 && (
         <div className="plot-tasks">
-          Cần: {tasks.map(t => `${TASK_LABELS[t]}${plot.owner === 'landlord' ? ` (+${CONFIG.wages[t]} Xu)` : ''}`).join(', ')}
+          Cần: {tasks.map(t => `${TASK_LABELS[t]} [phím ${TOOL_ORDER.indexOf(CONFIG.tasks[t].tool) + 1}]${plot.owner === 'landlord' ? ` (+${CONFIG.wages[t]} Xu)` : ''}`).join(', ')}
         </div>
       )}
       {plot.owner === 'forSale' && <div className="plot-tasks">Mua ở nhà Địa chủ: {formatXu(CONFIG.landPrice)}</div>}
@@ -56,7 +57,7 @@ export function Hud({ nearHouse }: { nearHouse: boolean }) {
       {nearHouse && <div className="hint">Nhấn <kbd>E</kbd> để vào nhà Địa chủ</div>}
       <div className="hotbar">
         {TOOL_ORDER.map((t, i) => (
-          <div key={t} className={`slot${t === tool ? ' slot-active' : ''}`}>
+          <div key={t} className={`slot${t === tool ? ' slot-active' : ''}${plot && taskForTool(plot, t) ? ' slot-usable' : ''}`}>
             <span className="slot-key">{i + 1}</span>
             <span>{toolLabel(t, game.toolLevels[t])}</span>
             {game.toolLevels[t] > 1 && <span className="slot-level">cấp {game.toolLevels[t]}</span>}

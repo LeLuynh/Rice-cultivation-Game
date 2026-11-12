@@ -4,7 +4,7 @@ import { PointerLockControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGame } from '../game/store'
 import { EYE_HEIGHT, HOUSE_DOOR, HOUSE_INTERACT_RADIUS, teleportPose } from '../game/layout'
-import { INTERACT_DISTANCE, actionDurationSec, moveWithCollision, taskForTool } from '../game/interaction'
+import { INTERACT_DISTANCE, actionDurationSec, actionHint, moveWithCollision, taskForTool } from '../game/interaction'
 import { TOOL_ORDER } from '../ui/messages'
 
 const WALK_SPEED = 4
@@ -35,7 +35,13 @@ export function Player() {
     }
     const up = (e: KeyboardEvent): void => { keys.current.delete(e.code) }
     const mouseDown = (e: MouseEvent): void => {
-      if (e.button === 0 && document.pointerLockElement === gl.domElement) holding.current = true
+      if (e.button !== 0 || document.pointerLockElement !== gl.domElement) return
+      holding.current = true
+      // bấm mà không làm được gì thì nói rõ vì sao (sai dụng cụ, ô chưa cần làm, đứng xa)
+      const { game, panel, targetPlotId, selectedTool, pushToast } = useGame.getState()
+      if (!game || panel !== null) return
+      const hint = actionHint(targetPlotId !== null ? game.plots[targetPlotId - 1] : null, selectedTool)
+      if (hint) pushToast(hint, 'error')
     }
     const mouseUp = (e: MouseEvent): void => { if (e.button === 0) holding.current = false }
     const blur = (): void => { keys.current.clear(); holding.current = false }

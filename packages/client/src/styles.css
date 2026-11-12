@@ -101,6 +101,8 @@ kbd { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #
 .hotbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; }
 .slot { position: relative; min-width: 82px; padding: 16px 8px 6px; border-radius: 8px; background: #000a; border: 2px solid transparent; text-align: center; font-size: 0.8rem; display: flex; flex-direction: column; }
 .slot-active { border-color: var(--accent); }
+.slot-usable { box-shadow: 0 0 0 2px #7fd67f inset; }
+.slot-usable::after { content: "✓"; position: absolute; top: 2px; right: 4px; color: #7fd67f; font-size: 12px; }
 .slot-key { position: absolute; top: 2px; left: 6px; font-size: 0.7rem; color: var(--muted); }
 .slot-level { font-size: 0.7rem; color: var(--accent); }
 .save-warning { position: absolute; top: 56px; left: 12px; padding: 6px 12px; border-radius: 8px; background: #7a2525e6; font-size: 0.85rem; }
